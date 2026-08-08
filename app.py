@@ -135,7 +135,7 @@ def generate_explanation(class_name, confidence):
 ⚠️ Urgency: {info['urgency']}
 💡 Note: This is an AI-assisted diagnosis. Always confirm with field scouting.
 """
-    return explanation
+    
 
 # ============================================================
 # PREDICTION (with Grad-CAM)

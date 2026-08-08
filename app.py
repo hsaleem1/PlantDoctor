@@ -1,3 +1,8 @@
+import streamlit as st
+import sys
+print("Python version:", sys.version)
+print("Streamlit imported successfully!")
+
 import os
 import requests
 import torch

@@ -1,16 +1,27 @@
 import os
 import requests
+import torch
 
 MODEL_PATH = 'best_wheat_model.pth'
 
 if not os.path.exists(MODEL_PATH):
-    # Download from Google Drive
-    url = "https://drive.usercontent.google.com/download?id=1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma&export=download&authuser=0"  # Replace this
+    print("Downloading model...")
+    # Use the direct download URL
+    url = "https://drive.usercontent.google.com/download?id=1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma&export=download&authuser=0"
+    
     response = requests.get(url, stream=True)
-    with open(MODEL_PATH, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-    print("✅ Model downloaded successfully!")
+    
+    if response.status_code == 200:
+        with open(MODEL_PATH, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"✅ Model downloaded! Size: {os.path.getsize(MODEL_PATH) / (1024*1024):.2f} MB")
+    else:
+        print(f"❌ Download failed! Status code: {response.status_code}")
+        # Remove any partial file
+        if os.path.exists(MODEL_PATH):
+            os.remove(MODEL_PATH)
+        raise Exception("Model download failed")
 
 
 import streamlit as st

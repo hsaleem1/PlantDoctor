@@ -1,3 +1,18 @@
+import os
+import requests
+
+MODEL_PATH = 'best_wheat_model.pth'
+
+if not os.path.exists(MODEL_PATH):
+    # Download from Google Drive
+    url = https://drive.google.com/file/d/1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma/view?usp=drive_link  # Replace this
+    response = requests.get(url, stream=True)
+    with open(MODEL_PATH, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    print("✅ Model downloaded successfully!")
+
+
 import streamlit as st
 import torch
 import torch.nn as nn

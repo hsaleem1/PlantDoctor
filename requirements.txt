@@ -1,3 +1,4 @@
+huggingface-hub
 streamlit
 torch
 torchvision

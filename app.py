@@ -92,22 +92,27 @@ def generate_gradcam(image):
     }
 
 # ============================================================
-# EXPLANATIONS
+# PLAIN ENGLISH EXPLANATION
 # ============================================================
-def get_explanation(class_name, confidence):
+def generate_explanation(class_name, confidence):
+    """Convert technical prediction to farmer-friendly language"""
+    
     explanations = {
         'BYDV': {
             'diagnosis': 'Barley Yellow Dwarf Virus (BYDV)',
+            'evidence': 'Yellowing and stunting patterns detected',
             'action': 'Scout field within 3 days. Apply aphid control if live aphids present.',
             'urgency': 'HIGH - Can reduce yields by up to 60%'
         },
         'Healthy': {
             'diagnosis': 'Healthy Plant',
+            'evidence': 'No disease symptoms detected',
             'action': 'Continue routine monitoring. No action needed.',
             'urgency': 'LOW - Maintain good crop management'
         },
         'Septoria': {
             'diagnosis': 'Septoria Leaf Spot',
+            'evidence': 'Brown lesions with yellow halos detected',
             'action': 'Apply fungicide within 7-10 days if weather favors spread.',
             'urgency': 'MODERATE - Can reduce yields by 30-50%'
         }
@@ -115,19 +120,22 @@ def get_explanation(class_name, confidence):
     
     info = explanations.get(class_name, {
         'diagnosis': f'Unknown: {class_name}',
-        'action': 'Consult agronomist for verification',
+        'evidence': 'Consult agronomist for verification',
+        'action': 'Send this image to your agricultural advisor',
         'urgency': 'UNKNOWN'
     })
     
-    level = "High" if confidence > 80 else "Medium" if confidence > 60 else "Low"
+    confidence_level = "High" if confidence > 80 else "Medium" if confidence > 60 else "Low"
     
-    return f"""
-🌾 **Diagnosis:** {info['diagnosis']}  
-📊 **Confidence:** {confidence:.1f}% ({level})  
-📋 **Action:** {info['action']}  
-⚠️ **Urgency:** {info['urgency']}  
-💡 *AI-assisted. Confirm with field scouting.*
+    explanation = f"""
+🌾 DIAGNOSIS: {info['diagnosis']}
+📊 Confidence: {confidence:.1f}% ({confidence_level})
+🔍 Evidence: {info['evidence']}
+📋 Action: {info['action']}
+⚠️ Urgency: {info['urgency']}
+💡 Note: This is an AI-assisted diagnosis. Always confirm with field scouting.
 """
+    return explanation
 
 # ============================================================
 # PREDICTION (with Grad-CAM)

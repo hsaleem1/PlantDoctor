@@ -1,134 +1,11 @@
-from huggingface_hub import hf_hub_download
-
-@st.cache_resource
-def load_model():
-    # Download from Hugging Face
-    model_path = hf_hub_download(
-        repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",  # Your HF username/repo
-        filename="best_wheat_model.pth"
-    )
-    
-    model = models.resnet18(pretrained=False)
-    model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
-    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
-    model.eval()
-    return model
-
-
-
 import streamlit as st
-import sys
-print("Python version:", sys.version)
-print("Streamlit imported successfully!")
-
-import os
-import requests
-import torch
-from pathlib import Path
-
-MODEL_PATH = Path('best_wheat_model.pth')
-
-def download_model():
-    """Download the model file from Google Drive with validation."""
-    # If the model already exists, try to verify it
-    if MODEL_PATH.exists():
-        try:
-            torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
-            print(f"✅ Model file '{MODEL_PATH}' already exists and is valid.")
-            return True
-        except Exception as e:
-            print(f"⚠️ Existing model file is corrupted ({e}). Re-downloading...")
-            MODEL_PATH.unlink()  # Delete the corrupt file
-
-    # Your file ID from Google Drive
-    file_id = "1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma"
-    
-    # Use the "uc" endpoint which handles large files better
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    
-    print("📥 Downloading model (44.8 MB)...")
-    try:
-        # Start the session
-        session = requests.Session()
-        response = session.get(url, stream=True)
-        
-        # Check if we got a confirmation page (for large files)
-        if "confirm" in response.text:
-            # Extract the confirmation token
-            import re
-            confirm_token = re.search(r'confirm=([^&]+)', response.text)
-            if confirm_token:
-                confirm_url = f"https://drive.google.com/uc?export=download&confirm={confirm_token.group(1)}&id={file_id}"
-                response = session.get(confirm_url, stream=True)
-        
-        # Proceed with download
-        if response.status_code == 200:
-            # Check if it's actually a file or HTML
-            content_type = response.headers.get('content-type', '')
-            if 'text/html' in content_type:
-                print("❌ Google Drive returned an HTML page instead of the file.")
-                print("Please check your link or make the file publicly accessible.")
-                return False
-            
-            # Download the file
-            with open(MODEL_PATH, 'wb') as f:
-                downloaded = 0
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        # Print progress every 5 MB
-                        if downloaded % (5 * 1024 * 1024) < 8192:
-                            print(f"   Downloaded: {downloaded / (1024*1024):.1f} MB")
-            
-            file_size = MODEL_PATH.stat().st_size
-            print(f"✅ Downloaded: {file_size / (1024*1024):.2f} MB")
-            
-            # Verify the file
-            try:
-                test_data = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
-                print("✅ Model file is valid!")
-                return True
-            except Exception as e:
-                print(f"❌ Downloaded file is corrupted: {e}")
-                MODEL_PATH.unlink()  # Delete the corrupt file
-                return False
-        else:
-            print(f"❌ Download failed with status code: {response.status_code}")
-            return False
-    except Exception as e:
-        print(f"❌ Download error: {e}")
-        return False
-
-# ============================================================
-# Load the model (with caching)
-# ============================================================
-@st.cache_resource
-def load_model():
-    # Try to download if needed
-    if not download_model():
-        st.error("Failed to download model. Please check your internet connection and Google Drive link.")
-        st.stop()
-    
-    # Load the model
-    try:
-        model = models.resnet18(pretrained=False)
-        model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
-        model.load_state_dict(torch.load(MODEL_PATH, map_location='cpu', weights_only=False))
-        model.eval()
-        return model
-    except Exception as e:
-        st.error(f"Failed to load model: {e}")
-        st.stop()
-
-import streamlit as st  # <-- ADD THIS LINE FIRST
 import torch
 import torch.nn as nn
 from torchvision import transforms, models
 from PIL import Image
 import numpy as np
 import os
-import requests
+from huggingface_hub import hf_hub_download
 
 # ============================================================
 # CONFIGURATION
@@ -143,13 +20,21 @@ IMAGE_SIZE = 224
 # ============================================================
 @st.cache_resource
 def load_model():
+    # Download from Hugging Face
+    try:
+        model_path = hf_hub_download(
+            repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",
+            filename="best_wheat_model.pth"
+        )
+    except Exception as e:
+        st.error(f"Failed to download model: {e}")
+        st.stop()
+    
     model = models.resnet18(pretrained=False)
     model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location='cpu', weights_only=False))
+    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
     model.eval()
     return model
-
-model = load_model()
 
 # ============================================================
 # TRANSFORMS
@@ -220,6 +105,11 @@ def predict_image(image):
     
     diagnosis = CLASS_NAMES[pred_class]
     return diagnosis, confidence, get_explanation(diagnosis, confidence)
+
+# ============================================================
+# LOAD MODEL (Cached)
+# ============================================================
+model = load_model()
 
 # ============================================================
 # STREAMLIT UI

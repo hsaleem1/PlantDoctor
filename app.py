@@ -1,3 +1,10 @@
+# Add these to your existing imports
+import matplotlib.pyplot as plt
+import io
+import cv2
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from pytorch_grad_cam.utils.image import show_cam_on_image
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -47,6 +54,44 @@ transform = transforms.Compose([
 ])
 
 # ============================================================
+# GRAD-CAM FUNCTION
+# ============================================================
+def generate_gradcam(image):
+    """Generate Grad-CAM heatmap for the input image"""
+    img_np = np.array(image)
+    input_tensor = transform(image).unsqueeze(0)
+    
+    # Predict
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        probs = torch.nn.functional.softmax(outputs[0], dim=0)
+        pred_class = torch.argmax(probs).item()
+        confidence = probs[pred_class].item() * 100
+    
+    # Generate Grad-CAM heatmap
+    cam = GradCAM(model=model, target_layers=[model.layer4[-1]])
+    targets = [ClassifierOutputTarget(pred_class)]
+    heatmap = cam(input_tensor=input_tensor, targets=targets)
+    heatmap = heatmap[0, :]
+    
+    # Resize heatmap to match image
+    heatmap_resized = cv2.resize(heatmap, (img_np.shape[1], img_np.shape[0]))
+    
+    # Overlay heatmap on image
+    img_display = img_np.astype(np.float32) / 255.0
+    visualization = show_cam_on_image(img_display, heatmap_resized, use_rgb=True)
+    
+    # Convert to RGB for display
+    visualization_rgb = cv2.cvtColor(visualization, cv2.COLOR_BGR2RGB)
+    
+    return {
+        'class': CLASS_NAMES[pred_class],
+        'confidence': confidence,
+        'heatmap': visualization_rgb,
+        'original': img_np
+    }
+
+# ============================================================
 # EXPLANATIONS
 # ============================================================
 def get_explanation(class_name, confidence):
@@ -85,26 +130,19 @@ def get_explanation(class_name, confidence):
 """
 
 # ============================================================
-# PREDICTION
+# PREDICTION (with Grad-CAM)
 # ============================================================
 def predict_image(image):
     if image is None:
-        return "No image", 0.0, "Please upload an image first."
+        return "No image", 0.0, "Please upload an image first.", None
     
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    input_tensor = transform(image).unsqueeze(0)
+    # Get Grad-CAM result
+    result = generate_gradcam(image)
     
-    with torch.no_grad():
-        outputs = model(input_tensor)
-        temperature = 2.0
-        probs = torch.nn.functional.softmax(outputs[0] / temperature, dim=0)
-        pred_class = torch.argmax(probs).item()
-        confidence = probs[pred_class].item() * 100
-    
-    diagnosis = CLASS_NAMES[pred_class]
-    return diagnosis, confidence, get_explanation(diagnosis, confidence)
+    return result['class'], result['confidence'], get_explanation(result['class'], result['confidence']), result['heatmap']
 
 # ============================================================
 # LOAD MODEL (Cached)
@@ -123,10 +161,18 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert('RGB')
-    st.image(image, caption="Uploaded Image", use_container_width=True)
     
     with st.spinner("Analyzing..."):
-        diagnosis, confidence, explanation = predict_image(image)
+        diagnosis, confidence, explanation, heatmap = predict_image(image)
+    
+    # Display original and heatmap side by side
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.image(image, caption="Uploaded Image", use_container_width=True)
+    
+    with col2:
+        st.image(heatmap, caption=f"Grad-CAM Heatmap: {diagnosis} ({confidence:.1f}%)", use_container_width=True)
     
     st.success(f"🔍 Diagnosis: **{diagnosis}**")
     st.info(f"📊 Confidence: **{confidence:.1f}%**")

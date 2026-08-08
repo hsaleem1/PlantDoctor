@@ -1,3 +1,21 @@
+from huggingface_hub import hf_hub_download
+
+@st.cache_resource
+def load_model():
+    # Download from Hugging Face
+    model_path = hf_hub_download(
+        repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",  # Your HF username/repo
+        filename="best_wheat_model.pth"
+    )
+    
+    model = models.resnet18(pretrained=False)
+    model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
+    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
+    model.eval()
+    return model
+
+
+
 import streamlit as st
 import sys
 print("Python version:", sys.version)

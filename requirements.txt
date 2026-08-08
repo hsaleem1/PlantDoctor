@@ -5,3 +5,5 @@ torchvision
 pillow
 numpy
 matplotlib
+grad-cam
+opencv-python-headless  # <-- ADD THIS

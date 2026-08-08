@@ -140,6 +140,7 @@ def get_explanation(class_name, confidence):
 # PREDICTION (with Grad-CAM)
 # ============================================================
 def predict_image(image):
+    """Predict for a single image"""
     if image is None:
         return "No image", 0.0, "Please upload an image first.", None
     
@@ -152,40 +153,75 @@ def predict_image(image):
     return result['class'], result['confidence'], get_explanation(result['class'], result['confidence']), result['heatmap']
 
 # ============================================================
+# BATCH PREDICTION (Multiple Images)
+# ============================================================
+def predict_batch(images):
+    """Predict for multiple images"""
+    results = []
+    for img in images:
+        diagnosis, confidence, explanation, heatmap = predict_image(img)
+        results.append({
+            'diagnosis': diagnosis,
+            'confidence': confidence,
+            'explanation': explanation,
+            'heatmap': heatmap,
+            'original': np.array(img)
+        })
+    return results
+
+# ============================================================
 # LOAD MODEL (Cached)
 # ============================================================
 model = load_model()
 
 # ============================================================
-# STREAMLIT UI
+# STREAMLIT UI (Batch Upload)
 # ============================================================
 st.set_page_config(page_title="PlantDoctor", page_icon="🌾")
 
 st.title("🌾 PlantDoctor - Wheat Disease Detection")
-st.write("Upload a wheat leaf image for instant diagnosis and spray recommendations")
+st.write("Upload one or more wheat leaf images for instant diagnosis and spray recommendations")
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_files = st.file_uploader(
+    "Choose images...", 
+    type=["jpg", "jpeg", "png"],
+    accept_multiple_files=True  # <-- KEY: allows multiple files
+)
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert('RGB')
+if uploaded_files and len(uploaded_files) > 0:
+    # Process all images
+    images = []
+    for uploaded_file in uploaded_files:
+        img = Image.open(uploaded_file).convert('RGB')
+        images.append(img)
     
-    with st.spinner("Analyzing..."):
-        diagnosis, confidence, explanation, heatmap = predict_image(image)
+    with st.spinner(f"Analyzing {len(images)} image(s)..."):
+        results = predict_batch(images)
     
-    # Display original and heatmap side by side
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.image(image, caption="Uploaded Image", use_container_width=True)
-    
-    with col2:
-        st.image(heatmap, caption=f"Grad-CAM Heatmap: {diagnosis} ({confidence:.1f}%)", use_container_width=True)
-    
-    st.success(f"🔍 Diagnosis: **{diagnosis}**")
-    st.info(f"📊 Confidence: **{confidence:.1f}%**")
-    
+    # Display summary
+    st.success(f"✅ Analysis complete for {len(results)} image(s)")
     st.markdown("---")
-    st.markdown("### 📋 Explanation & Spray Recommendations")
-    st.markdown(explanation)
+    
+    # Display each result in a container
+    for idx, result in enumerate(results):
+        with st.container():
+            st.subheader(f"📸 Image {idx + 1}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.image(result['original'], caption="Uploaded Image", use_container_width=True)
+            with col2:
+                st.image(result['heatmap'], caption=f"Grad-CAM Heatmap: {result['diagnosis']} ({result['confidence']:.1f}%)", use_container_width=True)
+            
+            # Diagnosis and confidence
+            st.success(f"🔍 **Diagnosis:** {result['diagnosis']}")
+            st.info(f"📊 **Confidence:** {result['confidence']:.1f}%")
+            
+            # Explanation
+            st.markdown("### 📋 Explanation & Spray Recommendations")
+            st.markdown(result['explanation'])
+            st.markdown("---")
     
     st.caption("⚠️ AI-assisted diagnosis. Always confirm with field scouting.")
+else:
+    st.info("👆 Upload one or more images to begin analysis")

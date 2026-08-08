@@ -98,7 +98,7 @@ def load_model():
         st.error(f"Failed to load model: {e}")
         st.stop()
 
-import streamlit as st
+import streamlit as st  # <-- ADD THIS LINE FIRST
 import torch
 import torch.nn as nn
 from torchvision import transforms, models

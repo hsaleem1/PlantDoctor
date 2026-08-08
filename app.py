@@ -5,7 +5,7 @@ MODEL_PATH = 'best_wheat_model.pth'
 
 if not os.path.exists(MODEL_PATH):
     # Download from Google Drive
-    url = "https://drive.google.com/file/d/1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma/view?usp=drive_link"  # Replace this
+    url = "https://drive.usercontent.google.com/download?id=1alRYSZ5CbaYTpRiuR76tRukhYgtrR0ma&export=download&authuser=0"  # Replace this
     response = requests.get(url, stream=True)
     with open(MODEL_PATH, 'wb') as f:
         for chunk in response.iter_content(chunk_size=8192):

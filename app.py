@@ -1,6 +1,3 @@
-import os
-os.environ["LD_PRELOAD"] = "/usr/lib/x86_64-linux-gnu/libGL.so.1"
-import cv2
 # Add these to your existing imports
 import matplotlib.pyplot as plt
 import io
@@ -109,8 +106,8 @@ transform = transforms.Compose([
 # ============================================================
 # GRAD-CAM FUNCTION (Updated to accept model)
 # ============================================================
-def generate_gradcam(image):
-    """Generate Grad-CAM heatmap for the input image"""
+def generate_gradcam(image, model, class_names):
+    """Generate Grad-CAM heatmap with the given model"""
     img_np = np.array(image)
     input_tensor = transform(image).unsqueeze(0)
     
@@ -120,24 +117,28 @@ def generate_gradcam(image):
         pred_class = torch.argmax(probs).item()
         confidence = probs[pred_class].item() * 100
     
-    # Generate Grad-CAM heatmap
     cam = GradCAM(model=model, target_layers=[model.layer4[-1]])
     targets = [ClassifierOutputTarget(pred_class)]
     heatmap = cam(input_tensor=input_tensor, targets=targets)
     heatmap = heatmap[0, :]
     
-    # Resize and overlay (uses cv2)
+    # Resize heatmap to match image
     heatmap_resized = cv2.resize(heatmap, (img_np.shape[1], img_np.shape[0]))
+    
+    # Overlay heatmap on image
     img_display = img_np.astype(np.float32) / 255.0
     visualization = show_cam_on_image(img_display, heatmap_resized, use_rgb=True)
+    
+    # Convert to RGB for display
     visualization_rgb = cv2.cvtColor(visualization, cv2.COLOR_BGR2RGB)
     
     return {
-        'class': CLASS_NAMES[pred_class],
+        'class': class_names[pred_class],
         'confidence': confidence,
         'heatmap': visualization_rgb,
         'original': img_np
     }
+
 # ============================================================
 # EXPLANATIONS (Updated with Evidence)
 # ============================================================
@@ -339,61 +340,10 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown("### 📋 Explanation & Spray Recommendations")
             st.markdown(result['explanation'])
             st.markdown("---")
-       
-
+    
     # ============================================================
-    # FEEDBACK LOOP (Hugging Face Dataset)
+    # FEEDBACK LOOP (ADD THIS HERE)
     # ============================================================
-    from huggingface_hub import HfApi
-    import json
-    import datetime
-    
-    # Initialize Hugging Face API
-    hf_api = HfApi()
-    
-    # Your feedback dataset repository
-    FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
-    
-    def save_feedback(image_name, predicted, actual, crop, correct):
-        """Save feedback to Hugging Face dataset"""
-        try:
-            # Load existing feedback
-            try:
-                import requests
-                url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/raw/main/feedback.jsonl"
-                response = requests.get(url)
-                if response.status_code == 200:
-                    with open("feedback.jsonl", "w") as f:
-                        f.write(response.text)
-            except:
-                # Create new file if it doesn't exist
-                with open("feedback.jsonl", "w") as f:
-                    pass
-            
-            # Append new feedback
-            with open("feedback.jsonl", "a") as f:
-                feedback_entry = {
-                    "timestamp": str(datetime.datetime.now()),
-                    "image_name": image_name,
-                    "predicted": predicted,
-                    "actual": actual,
-                    "crop": crop,
-                    "correct": correct
-                }
-                f.write(json.dumps(feedback_entry) + "\n")
-            
-            # Upload to Hugging Face
-            hf_api.upload_file(
-                path_or_fileobj="feedback.jsonl",
-                path_in_repo="feedback.jsonl",
-                repo_id=FEEDBACK_REPO,
-                repo_type="dataset"
-            )
-            return True
-        except Exception as e:
-            print(f"Error saving feedback: {e}")
-            return False
-    
     st.markdown("---")
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
@@ -401,28 +351,18 @@ if uploaded_files and len(uploaded_files) > 0:
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['diagnosis']})"):
             col1, col2 = st.columns(2)
-            image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
-            current_crop = selected_crop
-            
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    if save_feedback(image_name, result['diagnosis'], result['diagnosis'], current_crop, "Yes"):
-                        st.success("✅ Feedback saved to Hugging Face!")
-                    else:
-                        st.error("Could not save feedback.")
-            
+                    st.success("✅ Thank you! Your feedback helps us improve.")
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
                     with st.expander("✏️ What was the correct diagnosis?"):
                         actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
                         if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
-                                if save_feedback(image_name, result['diagnosis'], actual, current_crop, "No"):
-                                    st.success("🙏 Feedback saved to Hugging Face!")
-                                else:
-                                    st.error("Could not save feedback.")
+                                st.success("🙏 Feedback submitted! Thank you.")
                             else:
-                                st.warning("Please enter a diagnosis before submitting.")     
+                                st.warning("Please enter a diagnosis before submitting.")
 
     # ============================================================
     # HEALTH DASHBOARD (Mock-up)

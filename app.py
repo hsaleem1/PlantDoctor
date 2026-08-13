@@ -69,10 +69,9 @@ def load_model(crop_name):
     try:
         # Try to download from Hugging Face first (if available)
         try:
-            from huggingface_hub import hf_hub_download
-            model_path = hf_hub_download(
-                repo_id=f"Muhammad-Hammad-Saleem/{crop_name.lower()}-model",
-                filename="best_model.pth"
+	    model_path = hf_hub_download(
+            	repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",
+            	filename="best_wheat_model.pth"
             )
         except:
             # Fall back to local file (if running locally)

@@ -73,8 +73,6 @@ def load_model(crop_name):
         st.error(f"Failed to load model for {crop_name}: {e}")
         st.stop()
 
-model = load_model()
-
 # ============================================================
 # TRANSFORMS
 # ============================================================

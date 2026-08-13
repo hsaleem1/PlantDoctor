@@ -342,6 +342,29 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown("---")
     
     # ============================================================
+    # FEEDBACK LOOP (ADD THIS HERE)
+    # ============================================================
+    st.markdown("---")
+    st.subheader("📝 Help Improve the Model")
+    st.caption("Your feedback helps us train better models for farmers")
+    
+    for idx, result in enumerate(results):
+        with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['diagnosis']})"):
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(f"✅ Correct", key=f"correct_{idx}"):
+                    st.success("✅ Thank you! Your feedback helps us improve.")
+            with col2:
+                if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
+                    with st.expander("✏️ What was the correct diagnosis?"):
+                        actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
+                        if st.button("Submit", key=f"submit_{idx}"):
+                            if actual:
+                                st.success("🙏 Feedback submitted! Thank you.")
+                            else:
+                                st.warning("Please enter a diagnosis before submitting.")
+
+    # ============================================================
     # HEALTH DASHBOARD (Mock-up)
     # ============================================================
 

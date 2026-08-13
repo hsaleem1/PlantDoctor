@@ -1,4 +1,5 @@
 huggingface-hub
+requests
 streamlit
 torch
 torchvision

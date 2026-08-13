@@ -1,3 +1,6 @@
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
+import cv2
 # Add these to your existing imports
 import matplotlib.pyplot as plt
 import io

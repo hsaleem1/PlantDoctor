@@ -340,10 +340,61 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown("### 📋 Explanation & Spray Recommendations")
             st.markdown(result['explanation'])
             st.markdown("---")
+       
+
+    # ============================================================
+    # FEEDBACK LOOP (Hugging Face Dataset)
+    # ============================================================
+    from huggingface_hub import HfApi
+    import json
+    import datetime
     
-    # ============================================================
-    # FEEDBACK LOOP (ADD THIS HERE)
-    # ============================================================
+    # Initialize Hugging Face API
+    hf_api = HfApi()
+    
+    # Your feedback dataset repository
+    FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
+    
+    def save_feedback(image_name, predicted, actual, crop, correct):
+        """Save feedback to Hugging Face dataset"""
+        try:
+            # Load existing feedback
+            try:
+                import requests
+                url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/raw/main/feedback.jsonl"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    with open("feedback.jsonl", "w") as f:
+                        f.write(response.text)
+            except:
+                # Create new file if it doesn't exist
+                with open("feedback.jsonl", "w") as f:
+                    pass
+            
+            # Append new feedback
+            with open("feedback.jsonl", "a") as f:
+                feedback_entry = {
+                    "timestamp": str(datetime.datetime.now()),
+                    "image_name": image_name,
+                    "predicted": predicted,
+                    "actual": actual,
+                    "crop": crop,
+                    "correct": correct
+                }
+                f.write(json.dumps(feedback_entry) + "\n")
+            
+            # Upload to Hugging Face
+            hf_api.upload_file(
+                path_or_fileobj="feedback.jsonl",
+                path_in_repo="feedback.jsonl",
+                repo_id=FEEDBACK_REPO,
+                repo_type="dataset"
+            )
+            return True
+        except Exception as e:
+            print(f"Error saving feedback: {e}")
+            return False
+    
     st.markdown("---")
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
@@ -351,18 +402,28 @@ if uploaded_files and len(uploaded_files) > 0:
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['diagnosis']})"):
             col1, col2 = st.columns(2)
+            image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
+            current_crop = selected_crop
+            
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    st.success("✅ Thank you! Your feedback helps us improve.")
+                    if save_feedback(image_name, result['diagnosis'], result['diagnosis'], current_crop, "Yes"):
+                        st.success("✅ Feedback saved to Hugging Face!")
+                    else:
+                        st.error("Could not save feedback.")
+            
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
                     with st.expander("✏️ What was the correct diagnosis?"):
                         actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
                         if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
-                                st.success("🙏 Feedback submitted! Thank you.")
+                                if save_feedback(image_name, result['diagnosis'], actual, current_crop, "No"):
+                                    st.success("🙏 Feedback saved to Hugging Face!")
+                                else:
+                                    st.error("Could not save feedback.")
                             else:
-                                st.warning("Please enter a diagnosis before submitting.")
+                                st.warning("Please enter a diagnosis before submitting.")     
 
     # ============================================================
     # HEALTH DASHBOARD (Mock-up)

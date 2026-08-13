@@ -63,28 +63,32 @@ def load_model(crop_name):
         st.error(f"Unknown crop: {crop_name}")
         st.stop()
     
-    model_path = config['model_path']
-    num_classes = len(config['classes'])
+    # Always use the wheat model
+    model_path = None
     
+    # Try Hugging Face first
     try:
-        # Try to download from Hugging Face first (if available)
-        try:
-	    model_path = hf_hub_download(
-            	repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",
-            	filename="best_wheat_model.pth"
-            )
-        except:
-            # Fall back to local file (if running locally)
-            pass
-        
-        model = models.resnet18(pretrained=False)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
-        model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
-        model.eval()
-        return model
+        model_path = hf_hub_download(
+            repo_id="Muhammad-Hammad-Saleem/PlantDoctor-model",
+            filename="best_wheat_model.pth"
+        )
     except Exception as e:
-        st.error(f"Failed to load model for {crop_name}: {e}")
+        # Fall back to local file
+        try:
+            model_path = 'best_wheat_model.pth'
+        except:
+            pass
+    
+    if model_path is None:
+        st.error("Could not find model file")
         st.stop()
+    
+    # Always use 3 classes (wheat model)
+    model = models.resnet18(pretrained=False)
+    model.fc = nn.Linear(model.fc.in_features, 3)
+    model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
+    model.eval()
+    return model
 
 # ============================================================
 # TRANSFORMS

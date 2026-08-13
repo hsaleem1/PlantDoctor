@@ -31,21 +31,24 @@ CROP_CONFIG = {
         'model_path': 'best_wheat_model.pth',
         'icon': '🌾',
         'trained_images': 5000,
-        'accuracy': 92.5
+        'accuracy': 92.5,
+        'status': 'trained'
     },
     'Beans': {
-        'classes': ['BYDV', 'Healthy', 'Septoria'],  # Same 3 classes (temporary)
-        'model_path': 'best_wheat_model.pth',        # Same model (temporary)
+        'classes': ['BYDV', 'Healthy', 'Septoria'],
+        'model_path': 'best_wheat_model.pth',
         'icon': '🫘',
-        'trained_images': 0,                         # Not trained yet
-        'accuracy': 0.0
+        'trained_images': 0,
+        'accuracy': 0.0,
+        'status': 'pending'
     },
     'Broccoli': {
-        'classes': ['BYDV', 'Healthy', 'Septoria'],  # Same 3 classes (temporary)
-        'model_path': 'best_wheat_model.pth',        # Same model (temporary)
+        'classes': ['BYDV', 'Healthy', 'Septoria'],
+        'model_path': 'best_wheat_model.pth',
         'icon': '🥦',
-        'trained_images': 0,                         # Not trained yet
-        'accuracy': 0.0
+        'trained_images': 0,
+        'accuracy': 0.0,
+        'status': 'pending'
     }
     # Add your other crops here with the same 3 classes
 }
@@ -231,18 +234,17 @@ st.title("🌾 PlantDoctor - Multi-Crop Disease Detection")
 st.write("Select a crop and upload images for instant diagnosis")
 
 # ============================================================
-# SIDEBAR: CROP SELECTION
+# SIDEBAR: CROP SELECTION & MODEL CARDS
 # ============================================================
 st.sidebar.header("🌱 Select Crop")
 
-# Dropdown for crop selection
 selected_crop = st.sidebar.selectbox(
     "Choose your crop:",
     options=CROP_NAMES,
-    index=0  # Default to first crop (Wheat)
+    index=0
 )
 
-# Display crop info in sidebar
+# Crop info
 crop_info = CROP_CONFIG[selected_crop]
 st.sidebar.markdown(f"**{crop_info['icon']} {selected_crop}**")
 st.sidebar.markdown(f"**Detectable conditions:** {len(crop_info['classes'])}")
@@ -250,13 +252,44 @@ st.sidebar.markdown("**Classes:**")
 for cls in crop_info['classes']:
     st.sidebar.markdown(f"- {cls}")
 
-# Display training info if available
 if 'trained_images' in crop_info:
     st.sidebar.markdown(f"**Training images:** {crop_info['trained_images']}")
 if 'accuracy' in crop_info and crop_info['accuracy'] > 0:
     st.sidebar.markdown(f"**Model accuracy:** {crop_info['accuracy']:.1f}%")
 else:
     st.sidebar.markdown("**Model accuracy:** Not yet trained")
+
+st.sidebar.markdown("---")
+
+# ============================================================
+# MODEL CARDS (Inside Sidebar)
+# ============================================================
+st.sidebar.subheader("📊 Model Card")
+
+with st.sidebar.container():
+    # Status
+    if crop_info.get('accuracy', 0) > 0:
+        st.sidebar.markdown("✅ **Status:** Trained")
+    else:
+        st.sidebar.markdown("⏳ **Status:** Training in progress")
+    
+    # Training details
+    st.sidebar.markdown(f"📊 **Training images:** {crop_info.get('trained_images', 'N/A')}")
+    
+    if crop_info.get('accuracy', 0) > 0:
+        st.sidebar.markdown(f"🎯 **Accuracy:** {crop_info['accuracy']:.1f}%")
+    else:
+        st.sidebar.markdown("🎯 **Accuracy:** Not yet available")
+    
+    st.sidebar.markdown(f"📁 **Classes:** {len(crop_info['classes'])}")
+    
+    # Progress bar
+    if crop_info.get('accuracy', 0) > 0:
+        st.sidebar.progress(crop_info['accuracy'] / 100, text=f"Model readiness: {crop_info['accuracy']:.0f}%")
+    else:
+        st.sidebar.progress(0.3, text="Model readiness: 30% (placeholder)")
+    
+    st.sidebar.caption("📅 Model version: v1.0 (June 2026)")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Upload images to get diagnosis and recommendations")
@@ -270,6 +303,7 @@ with st.spinner(f"Loading model for {selected_crop}..."):
     NUM_CLASSES = len(CLASS_NAMES)
 
 st.success(f"✅ Ready! Analyzing {selected_crop}")
+
 
 # ============================================================
 # MAIN UPLOAD AREA

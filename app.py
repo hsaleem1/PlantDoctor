@@ -306,7 +306,7 @@ st.success(f"✅ Ready! Analyzing {selected_crop}")
 
 
 # ============================================================
-# MAIN UPLOAD AREA
+# MAIN UPLOAD AREA & RESULTS
 # ============================================================
 uploaded_files = st.file_uploader(
     f"Upload {selected_crop} images...", 
@@ -341,6 +341,91 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown(result['explanation'])
             st.markdown("---")
     
+    # ============================================================
+    # HEALTH DASHBOARD (Mock-up)
+    # ============================================================
+
+    st.markdown("---")
+    st.subheader("📊 Farm Health Dashboard")
+    st.caption("Overview of recent diagnoses across your fields")
+    
+    # Create a summary of results
+    summary = {}
+    for result in results:
+        crop = selected_crop
+        diagnosis = result['diagnosis']
+        key = f"{crop} - {diagnosis}"
+        summary[key] = summary.get(key, 0) + 1
+    
+    # Display summary in columns
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            label="🌾 Total Images Analyzed",
+            value=len(results),
+            delta="Today's session"
+        )
+    
+    with col2:
+        # Count healthy vs diseased
+        healthy_count = sum(1 for r in results if r['diagnosis'] == 'Healthy')
+        disease_count = len(results) - healthy_count
+        st.metric(
+            label="🟢 Healthy / 🔴 Diseased",
+            value=f"{healthy_count} / {disease_count}",
+            delta=f"{disease_count/len(results)*100:.0f}% affected" if len(results) > 0 else "0%"
+        )
+    
+    with col3:
+        # Most common issue
+        if summary:
+            most_common = max(summary, key=summary.get)
+            st.metric(
+                label="⚠️ Most Common Issue",
+                value=most_common.split(" - ")[1],
+                delta=f"{summary[most_common]} detections"
+            )
+        else:
+            st.metric(label="⚠️ Most Common Issue", value="None detected")
+    
+    # Detailed breakdown table
+    st.markdown("### 📋 Detailed Breakdown")
+    breakdown_data = []
+    for key, count in summary.items():
+        crop_name, disease = key.split(" - ")
+        breakdown_data.append({"Crop": crop_name, "Disease/Issue": disease, "Detections": count})
+    
+    if breakdown_data:
+        import pandas as pd
+        df = pd.DataFrame(breakdown_data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No detections to display")
+    
+    # Field-level map visualization (placeholder)
+    st.markdown("### 🗺️ Field Health Map")
+    st.caption("Interactive map showing affected areas (coming soon)")
+    
+    # Mock-up of a field map
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Field A**")
+        st.markdown("🌾 Wheat - 🟢 Healthy")
+        st.markdown("🌾 Wheat - 🟡 Moderate")
+        st.markdown("🌾 Wheat - 🔴 BYDV")
+    with col2:
+        st.markdown("**Field B**")
+        st.markdown("🫘 Beans - 🟢 Healthy")
+        st.markdown("🫘 Beans - 🟢 Healthy")
+    with col3:
+        st.markdown("**Field C**")
+        st.markdown("🥦 Broccoli - ⚠️ In Progress")
+    
+    # ============================================================
+    # FINAL CAPTION
+    # ============================================================
+
     st.caption("⚠️ AI-assisted diagnosis. Always confirm with field scouting.")
 else:
     st.info("👆 Upload one or more images to begin analysis")

@@ -230,12 +230,16 @@ st.set_page_config(page_title="PlantDoctor", page_icon="🌾")
 st.title("🌾 PlantDoctor - Multi-Crop Disease Detection")
 st.write("Select a crop and upload images for instant diagnosis")
 
-# Sidebar for crop selection
+# ============================================================
+# SIDEBAR: CROP SELECTION
+# ============================================================
 st.sidebar.header("🌱 Select Crop")
+
+# Dropdown for crop selection
 selected_crop = st.sidebar.selectbox(
     "Choose your crop:",
     options=CROP_NAMES,
-    index=0
+    index=0  # Default to first crop (Wheat)
 )
 
 # Display crop info in sidebar
@@ -246,10 +250,20 @@ st.sidebar.markdown("**Classes:**")
 for cls in crop_info['classes']:
     st.sidebar.markdown(f"- {cls}")
 
+# Display training info if available
+if 'trained_images' in crop_info:
+    st.sidebar.markdown(f"**Training images:** {crop_info['trained_images']}")
+if 'accuracy' in crop_info and crop_info['accuracy'] > 0:
+    st.sidebar.markdown(f"**Model accuracy:** {crop_info['accuracy']:.1f}%")
+else:
+    st.sidebar.markdown("**Model accuracy:** Not yet trained")
+
 st.sidebar.markdown("---")
 st.sidebar.caption("Upload images to get diagnosis and recommendations")
 
-# Load the selected model
+# ============================================================
+# LOAD MODEL FOR SELECTED CROP
+# ============================================================
 with st.spinner(f"Loading model for {selected_crop}..."):
     model = load_model(selected_crop)
     CLASS_NAMES = CROP_CONFIG[selected_crop]['classes']
@@ -257,7 +271,9 @@ with st.spinner(f"Loading model for {selected_crop}..."):
 
 st.success(f"✅ Ready! Analyzing {selected_crop}")
 
-# Main upload area
+# ============================================================
+# MAIN UPLOAD AREA
+# ============================================================
 uploaded_files = st.file_uploader(
     f"Upload {selected_crop} images...", 
     type=["jpg", "jpeg", "png"],

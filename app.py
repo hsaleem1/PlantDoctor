@@ -226,6 +226,49 @@ def predict_batch(images, model, class_names):
 # model = load_model()
 
 # ============================================================
+# FEEDBACK SAVING (Hugging Face Dataset)
+# ============================================================
+from huggingface_hub import HfApi
+import json
+import datetime
+
+# Initialize Hugging Face API
+hf_api = HfApi()
+
+# Your feedback dataset repository
+FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
+
+def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
+    """Save feedback to Hugging Face dataset in real-time"""
+    try:
+        # Create feedback entry
+        feedback_entry = {
+            "timestamp": str(datetime.datetime.now()),
+            "image_name": image_name,
+            "predicted": predicted,
+            "actual": actual,
+            "crop": crop,
+            "confidence": f"{confidence:.1f}%",
+            "correct": "Yes" if predicted == actual else "No"
+        }
+        
+        # Append to local JSONL file
+        with open("feedback.jsonl", "a") as f:
+            f.write(json.dumps(feedback_entry) + "\n")
+        
+        # Upload to Hugging Face (overwrites with new data)
+        hf_api.upload_file(
+            path_or_fileobj="feedback.jsonl",
+            path_in_repo="feedback.jsonl",
+            repo_id=FEEDBACK_REPO,
+            repo_type="dataset"
+        )
+        return True
+    except Exception as e:
+        print(f"Error saving feedback: {e}")
+        return False
+
+# ============================================================
 # STREAMLIT UI (Multi-Crop)
 # ============================================================
 st.set_page_config(page_title="PlantDoctor", page_icon="🌾")
@@ -341,8 +384,9 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown(result['explanation'])
             st.markdown("---")
     
+    
     # ============================================================
-    # FEEDBACK LOOP (ADD THIS HERE)
+    # FEEDBACK UI
     # ============================================================
     st.markdown("---")
     st.subheader("📝 Help Improve the Model")
@@ -351,18 +395,31 @@ if uploaded_files and len(uploaded_files) > 0:
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['diagnosis']})"):
             col1, col2 = st.columns(2)
+            
+            image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
+            crop_name = selected_crop
+            predicted = result['diagnosis']
+            confidence = result['confidence']
+            
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    st.success("✅ Thank you! Your feedback helps us improve.")
+                    if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence):
+                        st.success("✅ Feedback saved to Hugging Face!")
+                    else:
+                        st.error("Could not save feedback.")
+            
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
                     with st.expander("✏️ What was the correct diagnosis?"):
                         actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
                         if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
-                                st.success("🙏 Feedback submitted! Thank you.")
+                                if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence):
+                                    st.success("🙏 Feedback saved to Hugging Face!")
+                                else:
+                                    st.error("Could not save feedback.")
                             else:
-                                st.warning("Please enter a diagnosis before submitting.")
+                                st.warning("Please enter a diagnosis.")
 
     # ============================================================
     # HEALTH DASHBOARD (Mock-up)

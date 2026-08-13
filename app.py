@@ -34,20 +34,20 @@ CROP_CONFIG = {
         'accuracy': 92.5
     },
     'Beans': {
-        'classes': ['BYDV', 'Healthy', 'Septoria', 'Rust'],
-        'model_path': 'best_barley_model.pth',
-        'icon': '🌾',
-        'trained_images': 4500,
-        'accuracy': 89.0
+        'classes': ['BYDV', 'Healthy', 'Septoria'],  # Same 3 classes (temporary)
+        'model_path': 'best_wheat_model.pth',        # Same model (temporary)
+        'icon': '🫘',
+        'trained_images': 0,                         # Not trained yet
+        'accuracy': 0.0
     },
     'Broccoli': {
-        'classes': ['Healthy', 'Blight', 'Leaf Spot', 'Mosaic'],
-        'model_path': 'best_tomato_model.pth',
-        'icon': '🍅',
-        'trained_images': 6000,
-        'accuracy': 91.0
-    },
-    # Add your 4 remaining crops here
+        'classes': ['BYDV', 'Healthy', 'Septoria'],  # Same 3 classes (temporary)
+        'model_path': 'best_wheat_model.pth',        # Same model (temporary)
+        'icon': '🥦',
+        'trained_images': 0,                         # Not trained yet
+        'accuracy': 0.0
+    }
+    # Add your other crops here with the same 3 classes
 }
 
 CROP_NAMES = list(CROP_CONFIG.keys())
@@ -57,7 +57,7 @@ CROP_NAMES = list(CROP_CONFIG.keys())
 # ============================================================
 @st.cache_resource
 def load_model(crop_name):
-    """Load the model for the selected crop"""
+    """Load the wheat model for all crops (temporary)"""
     config = CROP_CONFIG.get(crop_name)
     if not config:
         st.error(f"Unknown crop: {crop_name}")

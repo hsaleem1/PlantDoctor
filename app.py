@@ -1,7 +1,7 @@
 # Add these to your existing imports
 import matplotlib.pyplot as plt
 import io
-import cv2
+#import cv2
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -106,8 +106,10 @@ transform = transforms.Compose([
 # ============================================================
 # GRAD-CAM FUNCTION (Updated to accept model)
 # ============================================================
-def generate_gradcam(image, model, class_names):
-    """Generate Grad-CAM heatmap with the given model"""
+def generate_gradcam(image):
+    """Generate Grad-CAM heatmap using PIL (NO OpenCV)"""
+    from PIL import Image as PILImage
+    
     img_np = np.array(image)
     input_tensor = transform(image).unsqueeze(0)
     
@@ -122,20 +124,21 @@ def generate_gradcam(image, model, class_names):
     heatmap = cam(input_tensor=input_tensor, targets=targets)
     heatmap = heatmap[0, :]
     
-    # Resize heatmap to match image
-    heatmap_resized = cv2.resize(heatmap, (img_np.shape[1], img_np.shape[0]))
+    # Resize using PIL (instead of cv2)
+    heatmap_pil = PILImage.fromarray(heatmap).resize((img_np.shape[1], img_np.shape[0]), PILImage.Resampling.BILINEAR)
+    heatmap_resized = np.array(heatmap_pil)
     
-    # Overlay heatmap on image
+    # Overlay using matplotlib (instead of cv2)
     img_display = img_np.astype(np.float32) / 255.0
-    visualization = show_cam_on_image(img_display, heatmap_resized, use_rgb=True)
-    
-    # Convert to RGB for display
-    visualization_rgb = cv2.cvtColor(visualization, cv2.COLOR_BGR2RGB)
+    import matplotlib.pyplot as plt
+    heatmap_colored = plt.cm.jet(heatmap_resized)[:, :, :3]
+    overlay = 0.4 * heatmap_colored + 0.6 * img_display
+    visualization = (overlay * 255).astype(np.uint8)
     
     return {
-        'class': class_names[pred_class],
+        'class': CLASS_NAMES[pred_class],
         'confidence': confidence,
-        'heatmap': visualization_rgb,
+        'heatmap': visualization,
         'original': img_np
     }
 

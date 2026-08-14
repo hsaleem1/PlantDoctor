@@ -767,43 +767,69 @@ else:
     # Create tabs for organization
     tab1, tab2, tab3 = st.tabs(["📊 Regional Map", "📋 Recent Reports", "📈 Trends"])
     
+
     # ============================================================
-    # TAB 1: Regional Disease Map (Option 2)
+    # TAB 1: Regional Disease Map (Dynamic)
     # ============================================================
     with tab1:
         st.subheader("🗺️ Regional Disease Activity")
         st.caption("Disease hotspots from community reports")
         
-        # Mock data - replace with actual data from Hugging Face
-        import pandas as pd
-        regions = {
-            "Norfolk": {"BYDV": 5, "Septoria": 2, "Rust": 1},
-            "Suffolk": {"Septoria": 4, "Rust": 1},
-            "Essex": {"Rust": 3, "BYDV": 1},
-            "Lincolnshire": {"Leaf Spot": 2, "BYDV": 3},
-            "Kent": {"Septoria": 2, "Rust": 2},
-            "Cambridgeshire": {"BYDV": 4, "Septoria": 1}
-        }
-        df_regions = pd.DataFrame(regions).fillna(0)
-        st.dataframe(df_regions, use_container_width=True)
-        
-        # Show hotspot summary
-        st.markdown("**🔴 Active Hotspots:**")
-        for region, diseases in regions.items():
-            if sum(diseases.values()) > 3:
-                st.warning(f"⚠️ **{region}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
-        
-        st.caption("Data based on recent community reports. Help improve accuracy by reporting sightings.")
+        # Load real data from feedback
+        try:
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                # Parse feedback data
+                all_feedback = []
+                for line in response.text.strip().split('\n'):
+                    if line:
+                        data = json.loads(line)
+                        all_feedback.append(data)
+                
+                # Build regional disease map from actual feedback
+                regions = {}
+                for fb in all_feedback:
+                    # Use actual crop from feedback
+                    crop = fb.get('crop', 'Unknown')
+                    # Use actual diagnosis from feedback
+                    disease = fb.get('actual', 'Unknown')
+                    # Use image_name as location placeholder (or add location field)
+                    location = fb.get('image_name', 'Unknown').split('_')[0] if '_' in fb.get('image_name', '') else 'Unknown'
+                    
+                    if location not in regions:
+                        regions[location] = {}
+                    regions[location][disease] = regions[location].get(disease, 0) + 1
+                
+                if regions:
+                    import pandas as pd
+                    df_regions = pd.DataFrame(regions).fillna(0)
+                    st.dataframe(df_regions, use_container_width=True)
+                    
+                    # Show hotspot summary
+                    st.markdown("**🔴 Active Hotspots:**")
+                    for region, diseases in regions.items():
+                        if sum(diseases.values()) > 0:
+                            st.warning(f"⚠️ **{region}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
+                else:
+                    st.info("No feedback data yet. Upload images and provide feedback to build the map!")
+            else:
+                st.info("Connect to Hugging Face to see community map")
+        except Exception as e:
+            st.warning(f"Could not load data: {e}")
     
+
     # ============================================================
-    # TAB 2: Recent Community Reports (Option 3 - Real Data)
+    # TAB 2: Recent Community Reports (Dynamic)
     # ============================================================
     with tab2:
         st.subheader("📋 Recent Community Reports")
         st.caption("Real reports from farmers using PlantDoctor")
         
         try:
-            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
             headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
             response = requests.get(url, headers=headers)
             
@@ -814,13 +840,14 @@ else:
                         data = json.loads(line)
                         reports.append({
                             "Crop": data.get('crop', 'Unknown'),
-                            "Disease": data.get('disease', 'Unknown'),
-                            "Location": data.get('location', 'Unknown'),
-                            "Severity": data.get('severity', 'N/A'),
+                            "Disease": data.get('actual', 'Unknown'),
+                            "Predicted": data.get('predicted', 'Unknown'),
+                            "Correct": data.get('correct', 'N/A'),
                             "Reported": data.get('timestamp', '')[:16]
                         })
                 
                 if reports:
+                    import pandas as pd
                     df_reports = pd.DataFrame(reports[-20:])  # Show last 20
                     st.dataframe(df_reports, use_container_width=True, hide_index=True)
                     
@@ -829,47 +856,82 @@ else:
                     with col1:
                         st.metric("Total Reports", len(reports))
                     with col2:
-                        top_disease = pd.DataFrame(reports)['Disease'].mode()[0] if reports else "N/A"
+                        # Find most common disease
+                        diseases = pd.DataFrame(reports)['Disease']
+                        top_disease = diseases.mode()[0] if not diseases.empty else "N/A"
                         st.metric("Top Disease", top_disease)
                     with col3:
-                        top_location = pd.DataFrame(reports)['Location'].mode()[0] if reports else "N/A"
-                        st.metric("Top Location", top_location)
+                        # Find most common crop
+                        crops = pd.DataFrame(reports)['Crop']
+                        top_crop = crops.mode()[0] if not crops.empty else "N/A"
+                        st.metric("Top Crop", top_crop)
                 else:
-                    st.info("No community reports yet. Be the first to report a sighting!")
+                    st.info("No reports yet. Upload images and provide feedback!")
             else:
                 st.info("Connect to Hugging Face to see community reports")
-        except:
-            st.info("Community reports will appear here once farmers start reporting")
-    
+        except Exception as e:
+            st.warning(f"Could not load reports: {e}")
+
     # ============================================================
-    # TAB 3: Trends & Analytics (Option 1 + Additional Analytics)
+    # TAB 3: Trends & Analytics (Dynamic)
     # ============================================================
     with tab3:
         st.subheader("📈 Disease Trends & Analytics")
         st.caption("Historical patterns from community reports")
         
-        # Mock trends (replace with real data later)
-        st.markdown("**Top 5 Reported Diseases:**")
-        disease_counts = {
-            "BYDV": 12,
-            "Septoria": 8,
-            "Rust": 6,
-            "Leaf Spot": 4,
-            "Blight": 3
-        }
-        import pandas as pd
-        df_trends = pd.DataFrame(list(disease_counts.items()), columns=["Disease", "Reports"])
-        st.bar_chart(df_trends.set_index("Disease"))
-        
-        st.markdown("**Reporting Activity (Last 7 Days):**")
-        st.json({
-            "Monday": 5,
-            "Tuesday": 3,
-            "Wednesday": 8,
-            "Thursday": 4,
-            "Friday": 6,
-            "Saturday": 2,
-            "Sunday": 1
-        })
-        
-        st.info("📊 More analytics will be available as the community grows. Submit reports to help build better insights!")
+        try:
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                feedback_data = []
+                for line in response.text.strip().split('\n'):
+                    if line:
+                        feedback_data.append(json.loads(line))
+                
+                if feedback_data:
+                    # Top diseases
+                    disease_counts = {}
+                    for fb in feedback_data:
+                        disease = fb.get('actual', 'Unknown')
+                        disease_counts[disease] = disease_counts.get(disease, 0) + 1
+                    
+                    import pandas as pd
+                    df_trends = pd.DataFrame(list(disease_counts.items()), columns=["Disease", "Reports"])
+                    st.bar_chart(df_trends.set_index("Disease"))
+                    
+                    # Accuracy over time
+                    correct_count = sum(1 for fb in feedback_data if fb.get('correct') == 'Yes')
+                    total_count = len(feedback_data)
+                    accuracy = (correct_count / total_count * 100) if total_count > 0 else 0
+                    st.metric("Overall Model Accuracy", f"{accuracy:.1f}%")
+                    
+                    # Per-crop breakdown
+                    crop_stats = {}
+                    for fb in feedback_data:
+                        crop = fb.get('crop', 'Unknown')
+                        if crop not in crop_stats:
+                            crop_stats[crop] = {'correct': 0, 'total': 0}
+                        crop_stats[crop]['total'] += 1
+                        if fb.get('correct') == 'Yes':
+                            crop_stats[crop]['correct'] += 1
+                    
+                    if crop_stats:
+                        st.subheader("Per-Crop Accuracy")
+                        crop_df = pd.DataFrame([
+                            {
+                                "Crop": crop,
+                                "Accuracy": f"{stats['correct']/stats['total']*100:.1f}%",
+                                "Correct": stats['correct'],
+                                "Total": stats['total']
+                            }
+                            for crop, stats in crop_stats.items()
+                        ])
+                        st.dataframe(crop_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No data yet. Upload images and provide feedback!")
+            else:
+                st.info("Connect to Hugging Face to see trends")
+        except Exception as e:
+            st.warning(f"Could not load trends: {e}")

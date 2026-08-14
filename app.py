@@ -627,23 +627,36 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
-
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
-            selection_status = st.empty()  # 4 spaces indentation
+            # ============================================================
+            # DISPLAY HIGHLIGHT (if stored in session state)
+            # ============================================================
+            highlight_key = f"highlight_{idx}"
+            if st.session_state.get(highlight_key):
+                if st.session_state[highlight_key] == "correct":
+                    st.success("✅ You selected: **Correct**")
+                elif st.session_state[highlight_key] == "incorrect":
+                    st.info("❌ You selected: **Incorrect**")
             
             image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
     
+            # ============================================================
+            # LOCATION
+            # ============================================================
             location = st.text_input(
                 "📍 Your location (e.g., Norfolk, UK):", 
                 key=f"location_{idx}",
                 placeholder="e.g., Norfolk, UK"
             )
             
+            # ============================================================
+            # CORRECT / INCORRECT BUTTONS
+            # ============================================================
             col1, col2 = st.columns(2)
             
             with col1:
@@ -651,20 +664,22 @@ if uploaded_files and len(uploaded_files) > 0:
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
-                        selection_status.success("✅ You selected: **Correct**")
+                        st.session_state[highlight_key] = "correct"  # Store highlight
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
+                        st.rerun()  # Refresh to show highlight
             
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
-                        selection_status.info("❌ You selected: **Incorrect**")
+                        st.session_state[highlight_key] = "incorrect"  # Store highlight
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
                         st.session_state[f"show_severity_{idx}"] = False
+                        st.rerun()  # Refresh to show highlight
             
             # Incorrect diagnosis section
             if st.session_state.get(f"incorrect_clicked_{idx}", False):

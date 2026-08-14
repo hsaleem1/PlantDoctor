@@ -410,48 +410,48 @@ if research_mode:
     """)
 
 # ============================================================
-# COMMUNITY HUB - Sidebar (Reporting Form)
+# QUICK REPORT (Sidebar) - Corrected
 # ============================================================
 st.sidebar.markdown("---")
 st.sidebar.subheader("📝 Quick Report")
-st.sidebar.caption("Report, track, and learn")
+st.sidebar.caption("Report a disease sighting in your area")
 
-# Use tabs within the sidebar expander for organization
 with st.sidebar.expander("📝 Report a Sighting", expanded=False):
-    with st.form("disease_report_form"):
+    with st.form("quick_report_form"):
         st.markdown("**Report Disease/Pest Sighting**")
+        
         report_crop = st.selectbox(
             "Crop", 
             ["Wheat", "Barley", "Beans", "Broccoli", "Tomato", "Potato", "Other"],
-            key="report_crop"
+            key="quick_crop"
         )
-        report_disease = st.text_input("Disease/Pest Observed", key="report_disease")
-        report_location = st.text_input("Location (e.g., Norfolk, UK)", key="report_location")
+        report_disease = st.text_input("Disease/Pest Observed", key="quick_disease")
+        report_location = st.text_input("Location (e.g., Norfolk, UK)", key="quick_location")
         report_severity = st.select_slider(
             "Severity",
             options=["Low", "Medium", "High", "Critical"],
             value="Medium",
-            key="report_severity"
+            key="quick_severity"
         )
-        report_notes = st.text_area("Additional Notes (optional)", key="report_notes")
+        report_notes = st.text_area("Additional Notes (optional)", key="quick_notes")
         
         submitted = st.form_submit_button("🚀 Submit Report")
         
         if submitted:
             if report_crop and report_disease and report_location:
-                # Save to a new JSONL file for community reports
+                # Save to a SEPARATE file for community reports
                 report_entry = {
                     "timestamp": str(datetime.datetime.now()),
                     "crop": report_crop,
                     "disease": report_disease,
                     "location": report_location,
                     "severity": report_severity,
-                    "notes": report_notes
+                    "notes": report_notes,
+                    "source": "quick_report"  # Distinguish from AI feedback
                 }
-                # Save locally and upload to Hugging Face
+                
                 try:
-                    # Load existing reports
-                    import requests
+                    # Load existing community reports
                     try:
                         url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
                         headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
@@ -467,8 +467,9 @@ with st.sidebar.expander("📝 Report a Sighting", expanded=False):
                         f.write(json.dumps(report_entry) + "\n")
                     
                     # Upload to Hugging Face
-                    hf_api = HfApi()
-                    hf_api.upload_file(
+                    from huggingface_hub import HfApi
+                    api = HfApi()
+                    api.upload_file(
                         path_or_fileobj="community_reports.jsonl",
                         path_in_repo="community_reports.jsonl",
                         repo_id=FEEDBACK_REPO,
@@ -476,6 +477,7 @@ with st.sidebar.expander("📝 Report a Sighting", expanded=False):
                         token=st.secrets["HF_TOKEN"]
                     )
                     st.success("✅ Report submitted! Thank you for helping the community.")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Could not save report: {e}")
             else:

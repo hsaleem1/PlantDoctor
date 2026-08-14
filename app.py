@@ -631,37 +631,27 @@ if uploaded_files and len(uploaded_files) > 0:
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
+            selection_status = st.empty()  # 4 spaces indentation
             
-	    # At the top of the expander
-	    selection_status = st.empty()
-    
-
-	    image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
+            image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
-
-            # ============================================================
-            # 1. LOCATION
-            # ============================================================
+    
             location = st.text_input(
                 "📍 Your location (e.g., Norfolk, UK):", 
                 key=f"location_{idx}",
                 placeholder="e.g., Norfolk, UK"
             )
             
-            # ============================================================
-            # 2. CORRECT / INCORRECT BUTTONS
-            # ============================================================
             col1, col2 = st.columns(2)
-
             
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
-			selection_status.success("✅ You selected: **Correct**")
+                        selection_status.success("✅ You selected: **Correct**")
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
@@ -671,14 +661,12 @@ if uploaded_files and len(uploaded_files) > 0:
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
-			selection_status.info("❌ You selected: **Incorrect**")
+                        selection_status.info("❌ You selected: **Incorrect**")
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
                         st.session_state[f"show_severity_{idx}"] = False
             
-            # ============================================================
-            # 3. INCORRECT: Ask for correct diagnosis
-            # ============================================================
+            # Incorrect diagnosis section
             if st.session_state.get(f"incorrect_clicked_{idx}", False):
                 st.markdown("---")
                 st.markdown("**✏️ What was the correct diagnosis?**")
@@ -689,13 +677,10 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"actual_diagnosis_{idx}"] = actual
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
-                        # No st.rerun() — severity appears below naturally
                     else:
                         st.warning("⚠️ Please enter a diagnosis before submitting.")
             
-            # ============================================================
-            # 4. SEVERITY + SAVE (Shown after Correct OR Incorrect diagnosis)
-            # ============================================================
+            # Severity section
             if st.session_state.get(f"show_severity_{idx}", False):
                 st.markdown("---")
                 

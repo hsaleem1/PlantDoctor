@@ -414,7 +414,7 @@ if research_mode:
 # COMMUNITY HUB - Sidebar (Reporting Form)
 # ============================================================
 st.sidebar.markdown("---")
-st.sidebar.subheader("🤝 Community Hub")
+st.sidebar.subheader("📝 Quick Report")
 st.sidebar.caption("Report, track, and learn")
 
 # Use tabs within the sidebar expander for organization

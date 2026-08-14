@@ -409,6 +409,25 @@ if research_mode:
     """)
 
 # ============================================================
+# COMMUNITY FEATURE (Mock-up) - ADD THIS
+# ============================================================
+st.sidebar.markdown("---")
+st.sidebar.subheader("🤝 Community Insights")
+st.sidebar.caption("Share and learn from other farmers")
+
+with st.sidebar.expander("🌍 Join the Community"):
+    st.markdown("""
+    **Coming Soon:**
+    - 🔍 **Report disease sightings** in your area
+    - 📊 **View regional disease maps**
+    - 💬 **Discuss treatments** with experts
+    - 📈 **Track trends** over time
+    """)
+    
+    if st.sidebar.button("🚀 Launch Community Hub (Preview)"):
+        st.sidebar.info("Community Hub is under development. We'll notify you when ready!")
+
+# ============================================================
 # LOAD MODEL FOR SELECTED CROP
 # ============================================================
 with st.spinner(f"Loading model for {selected_crop}..."):
@@ -684,3 +703,35 @@ if uploaded_files and len(uploaded_files) > 0:
     st.caption("⚠️ AI-assisted diagnosis. Always confirm with field scouting.")
 else:
     st.info("👆 Upload one or more images to begin analysis")
+
+    # ============================================================
+    # COMMUNITY DASHBOARD (Mock-up) - ADD THIS
+    # ============================================================
+    st.markdown("---")
+    st.subheader("🤝 Community Insights")
+    st.caption("Collaborative disease tracking and knowledge sharing")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("🌾 Active Users", "1,247", delta="+12%")
+        st.caption("Farmers using PlantDoctor")
+    
+    with col2:
+        st.metric("📊 Reports", "3,891", delta="+8%")
+        st.caption("Total disease reports")
+    
+    with col3:
+        st.metric("🏆 Top Region", "East Anglia", delta="+15%")
+        st.caption("Most active reporting region")
+    
+    # Sample community posts
+    st.markdown("### 📋 Recent Community Reports")
+    st.markdown("""
+    | Crop | Disease | Location | Reported |
+    |------|---------|----------|----------|
+    | 🌾 Wheat | BYDV | Norfolk | 2 hours ago |
+    | 🌾 Wheat | Septoria | Suffolk | 4 hours ago |
+    | 🫘 Beans | Rust | Essex | 6 hours ago |
+    | 🥦 Broccoli | Leaf Spot | Lincolnshire | 1 day ago |
+    """)

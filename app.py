@@ -761,7 +761,7 @@ if uploaded_files and len(uploaded_files) > 0:
     # COMMUNITY HUB - Main Dashboard (All Three Options)
     # ============================================================
     st.markdown("---")
-    st.subheader("📊 Community Dashboard")
+    st.subheader("🤝 Community Hub")
     st.caption("Real-time disease tracking and knowledge sharing")
     
     # Create tabs for organization

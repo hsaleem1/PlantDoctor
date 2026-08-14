@@ -490,12 +490,12 @@ if uploaded_files and len(uploaded_files) > 0:
     st.caption("Your feedback helps us train better models for farmers")
     
     for idx, result in enumerate(results):
-        with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['diagnosis']})"):
+        with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             col1, col2 = st.columns(2)
             
             image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
             crop_name = selected_crop
-            predicted = result['diagnosis']
+            predicted = result['class']
             confidence = result['confidence']
             
             # ============================================================
@@ -544,7 +544,7 @@ if uploaded_files and len(uploaded_files) > 0:
     summary = {}
     for result in results:
         crop = selected_crop
-        diagnosis = result['diagnosis']
+        diagnosis = result['class']
         key = f"{crop} - {diagnosis}"
         summary[key] = summary.get(key, 0) + 1
     

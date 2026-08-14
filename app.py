@@ -197,17 +197,49 @@ def get_explanation(class_name, confidence, class_names):
 # PREDICTION (Crop-Specific)
 # ============================================================
 def predict_image(image, model, class_names):
-    """Predict for a single image with the given model"""
+    """Predict with Grad-CAM and return all probabilities"""
     if image is None:
-        return "No image", 0.0, "Please upload an image first.", None
+        return None
     
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # Get Grad-CAM result (pass the model)
-    result = generate_gradcam(image, model, class_names)
+    img_np = np.array(image)
+    input_tensor = transform(image).unsqueeze(0)
     
-    return result['class'], result['confidence'], get_explanation(result['class'], result['confidence'], class_names), result['heatmap']
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        temperature = 2.0
+        probs = torch.nn.functional.softmax(outputs[0] / temperature, dim=0)
+        pred_class = torch.argmax(probs).item()
+        confidence = probs[pred_class].item() * 100
+    
+    # Get all probabilities
+    all_probs = {}
+    for i, name in enumerate(class_names):
+        all_probs[name] = probs[i].item() * 100
+    
+    # Generate Grad-CAM
+    cam = GradCAM(model=model, target_layers=[model.layer4[-1]])
+    targets = [ClassifierOutputTarget(pred_class)]
+    heatmap = cam(input_tensor=input_tensor, targets=targets)
+    heatmap = heatmap[0, :]
+    
+    # Resize heatmap
+    heatmap_resized = cv2.resize(heatmap, (img_np.shape[1], img_np.shape[0]))
+    img_display = img_np.astype(np.float32) / 255.0
+    visualization = show_cam_on_image(img_display, heatmap_resized, use_rgb=True)
+    visualization_rgb = cv2.cvtColor(visualization, cv2.COLOR_BGR2RGB)
+    
+    return {
+        'class': class_names[pred_class],
+        'confidence': confidence,
+        'explanation': get_explanation(class_names[pred_class], confidence),
+        'heatmap': visualization_rgb,
+        'original': img_np,
+        'all_probs': all_probs,
+        'pred_class': pred_class
+    }
 
 # ============================================================
 # BATCH PREDICTION (Multiple Images)
@@ -216,16 +248,10 @@ def predict_batch(images, model, class_names):
     """Predict for multiple images"""
     results = []
     for img in images:
-        diagnosis, confidence, explanation, heatmap = predict_image(img, model, class_names)
-        results.append({
-            'diagnosis': diagnosis,
-            'confidence': confidence,
-            'explanation': explanation,
-            'heatmap': heatmap,
-            'original': np.array(img)
-        })
+        result = predict_image(img, model, class_names)
+        if result:
+            results.append(result)
     return results
-
 
 
 # ============================================================
@@ -366,6 +392,23 @@ st.sidebar.markdown("---")
 st.sidebar.caption("Upload images to get diagnosis and recommendations")
 
 # ============================================================
+# RESEARCH MODE (Toggle) - ADD THIS
+# ============================================================
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔬 Research Mode")
+st.sidebar.caption("For academic and scientific analysis")
+
+research_mode = st.sidebar.toggle("Enable Research Mode", value=False)
+
+if research_mode:
+    st.sidebar.info("""
+    **Research Features:**
+    - Full confidence scores for all classes
+    - Grad-CAM heatmap analysis
+    - Model architecture details
+    """)
+
+# ============================================================
 # LOAD MODEL FOR SELECTED CROP
 # ============================================================
 with st.spinner(f"Loading model for {selected_crop}..."):
@@ -403,10 +446,37 @@ if uploaded_files and len(uploaded_files) > 0:
             with col1:
                 st.image(result['original'], caption="Uploaded Image", use_container_width=True)
             with col2:
-                st.image(result['heatmap'], caption=f"Grad-CAM: {result['diagnosis']} ({result['confidence']:.1f}%)", use_container_width=True)
+                st.image(result['heatmap'], caption=f"Grad-CAM: {result['class']} ({result['confidence']:.1f}%)", use_container_width=True)
             
-            st.success(f"🔍 **Diagnosis:** {result['diagnosis']}")
+            st.success(f"🔍 **Diagnosis:** {result['class']}")
             st.info(f"📊 **Confidence:** {result['confidence']:.1f}%")
+            
+            # ============================================================
+            # RESEARCH MODE DETAILS - ADD THIS
+            # ============================================================
+            if research_mode and 'all_probs' in result:
+                with st.expander("🔬 Research Details", expanded=True):
+                    st.subheader("All Class Probabilities")
+                    
+                    # Show bar chart
+                    import pandas as pd
+                    prob_df = pd.DataFrame({
+                        'Class': list(result['all_probs'].keys()),
+                        'Confidence (%)': list(result['all_probs'].values())
+                    })
+                    st.bar_chart(prob_df.set_index('Class'))
+                    
+                    # Show detailed table
+                    st.dataframe(prob_df, use_container_width=True, hide_index=True)
+                    
+                    st.subheader("Model Information")
+                    st.json({
+                        "Model Architecture": "ResNet18 (pretrained)",
+                        "Number of Classes": len(CLASS_NAMES),
+                        "Input Size": "224x224",
+                        "Temperature Scaling": "2.0",
+                        "Prediction ID": result.get('pred_class', 'N/A')
+                    })
             
             st.markdown("### 📋 Explanation & Spray Recommendations")
             st.markdown(result['explanation'])

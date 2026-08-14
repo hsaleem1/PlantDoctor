@@ -555,9 +555,10 @@ if uploaded_files and len(uploaded_files) > 0:
             st.markdown("### 📋 Explanation & Spray Recommendations")
             st.markdown(result['explanation'])
             st.markdown("---")
-       
+                  
+
     # ============================================================
-    # FEEDBACK UI (Corrected)
+    # FEEDBACK UI (With Unique Keys)
     # ============================================================
     st.markdown("---")
     st.subheader("📝 Help Improve the Model")
@@ -571,17 +572,16 @@ if uploaded_files and len(uploaded_files) > 0:
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
-
-            # ============================================================
-            # ADD LOCATION INPUT (ALWAYS VISIBLE)
-            # ============================================================
+            
+            # Location input with unique key
             location = st.text_input(
                 "📍 Your location (e.g., Norfolk, UK):", 
-                key=f"location_{idx}",
+                key=f"location_{idx}",  # Unique key
                 placeholder="e.g., Norfolk, UK"
             )
             
             with col1:
+                # Unique key for correct button
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
                     if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location):
                         st.success("✅ Feedback saved to Hugging Face!")
@@ -589,52 +589,28 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.error("Could not save feedback.")
             
             with col2:
+                # Unique key for incorrect button
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
-                    with st.expander("✏️ What was the correct diagnosis?"):
-                        actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
-                        if st.button("Submit", key=f"submit_{idx}"):
+                    # Store state for this image
+                    st.session_state[f"incorrect_clicked_{idx}"] = True
+                
+                # Show input if incorrect was clicked
+                if st.session_state.get(f"incorrect_clicked_{idx}", False):
+                    with st.expander("✏️ What was the correct diagnosis?", expanded=True):
+                        actual = st.text_input(
+                            "Enter the correct diagnosis:", 
+                            key=f"actual_{idx}"  # Unique key
+                        )
+                        if st.button("Submit", key=f"submit_{idx}"):  # Unique key
                             if actual:
                                 if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location):
                                     st.success("🙏 Feedback saved to Hugging Face!")
-                                else:
-                                    st.error("Could not save feedback.")
-                            else:
-                                st.warning("Please enter a diagnosis.")
-
-            
-            # ============================================================
-            # CORRECT BUTTON (Works)
-            # ============================================================
-            with col1:
-                if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence):
-                        st.success("✅ Feedback saved to Hugging Face!")
-                    else:
-                        st.error("Could not save feedback.")
-            
-            # ============================================================
-            # INCORRECT BUTTON (FIXED)
-            # ============================================================
-            with col2:
-                if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
-                    # Store the fact that the user clicked "Incorrect"
-                    st.session_state[f"incorrect_clicked_{idx}"] = True
-                
-                # Show the input box if "Incorrect" was clicked
-                if st.session_state.get(f"incorrect_clicked_{idx}", False):
-                    with st.expander("✏️ What was the correct diagnosis?", expanded=True):
-                        actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
-                        if st.button("Submit", key=f"submit_{idx}"):
-                            if actual:
-                                # Save the feedback with the actual diagnosis
-                                if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence):
-                                    st.success("🙏 Feedback saved to Hugging Face!")
-                                    # Reset the state for this image
                                     st.session_state[f"incorrect_clicked_{idx}"] = False
                                 else:
                                     st.error("Could not save feedback.")
                             else:
                                 st.warning("Please enter a diagnosis before submitting.")
+
 
     # ============================================================
     # HEALTH DASHBOARD (Mock-up)

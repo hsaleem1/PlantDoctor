@@ -627,7 +627,7 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
-    
+
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
@@ -654,9 +654,10 @@ if uploaded_files and len(uploaded_files) > 0:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
                     if not location.strip():
                         st.warning("⚠️ Please enter your location before submitting.")
-                    elif not severity:  # severity exists because we defined it earlier
+                    elif not st.session_state.get(f"severity_{idx}", ""):
                         st.warning("⚠️ Please select a severity level.")
                     else:
+                        severity = st.session_state[f"severity_{idx}"]
                         if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location, severity):
                             st.success("✅ Feedback saved to Hugging Face!")
                         else:
@@ -673,9 +674,10 @@ if uploaded_files and len(uploaded_files) > 0:
                             if actual:
                                 if not location.strip():
                                     st.warning("⚠️ Please enter your location before submitting.")
-                                elif not severity:
+                                elif not st.session_state.get(f"severity_{idx}", ""):
                                     st.warning("⚠️ Please select a severity level.")
                                 else:
+                                    severity = st.session_state[f"severity_{idx}"]
                                     if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location, severity):
                                         st.success("🙏 Feedback saved to Hugging Face!")
                                         st.session_state[f"incorrect_clicked_{idx}"] = False
@@ -685,14 +687,15 @@ if uploaded_files and len(uploaded_files) > 0:
                                 st.warning("Please enter a diagnosis before submitting.")
             
             # ============================================================
-            # 3. SEVERITY (Displayed at the End, but defined above)
+            # 3. SEVERITY (Displayed at the bottom, stored in session state)
             # ============================================================
             severity = st.select_slider(
                 "⚠️ Severity of the issue:",
                 options=["", "Low", "Medium", "High", "Critical"],
-                value="",
+                value=st.session_state.get(f"severity_{idx}", ""),
                 key=f"severity_{idx}"
             )
+
 
 
     # ============================================================
@@ -978,7 +981,7 @@ if uploaded_files and len(uploaded_files) > 0:
         else:
             st.info("No reports yet. Submit a report!")
 
-        # ============================================================
+    # ============================================================
     # TAB 3: Trends & Analytics
     # ============================================================
     with tab3:

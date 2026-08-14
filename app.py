@@ -414,7 +414,7 @@ if research_mode:
 # SIDEBAR: AI Feedback Stats
 # ============================================================
 st.sidebar.markdown("---")
-st.sidebar.subheader("📊 AI Feedback Stats")
+st.sidebar.subheader("📊 Feedback Stats")
 st.sidebar.caption("Model performance from user feedback")
 
 try:

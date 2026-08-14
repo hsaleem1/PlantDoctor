@@ -234,7 +234,7 @@ def predict_image(image, model, class_names):
     return {
         'class': class_names[pred_class],
         'confidence': confidence,
-        'explanation': get_explanation(class_names[pred_class], confidence),
+        'explanation': get_explanation(class_names[pred_class], confidence, class_names),
         'heatmap': visualization_rgb,
         'original': img_np,
         'all_probs': all_probs,

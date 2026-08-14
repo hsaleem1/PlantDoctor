@@ -277,11 +277,18 @@ FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
 # SAVE FEEDBACK TO HUGGING FACE (Full Code)
 # ============================================================
 def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, location="", severity=""):
-    """Save feedback to Hugging Face dataset (both feedback.jsonl and community_reports.jsonl)"""
+    """Save feedback to Hugging Face dataset"""
     try:
-        # Check if token is available
         if "HF_TOKEN" not in st.secrets:
             st.warning("Feedback not saved (no token)")
+            return False
+        
+        # Clean location
+        location = location.strip() if location and location.strip() else ""
+        
+        # If location is empty, don't save
+        if not location:
+            st.warning("⚠️ Location is required to save feedback. Please enter a location.")
             return False
         
         # ============================================================

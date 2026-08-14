@@ -543,57 +543,69 @@ if uploaded_files and len(uploaded_files) > 0:
         st.markdown("**Field C**")
         st.markdown("🥦 Broccoli - ⚠️ In Progress")
 
+
     # ============================================================
-    # FEEDBACK DASHBOARD (Real-time stats)
+    # FEEDBACK DASHBOARD (Authenticated)
     # ============================================================
     st.markdown("---")
     st.subheader("📊 Feedback Dashboard")
     st.caption("Live statistics from user feedback")
     
-    # Load feedback data from Hugging Face
-    try:
-        import requests
-        url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/raw/main/feedback.jsonl"
-        response = requests.get(url)
-        if response.status_code == 200:
-            feedback_data = []
-            for line in response.text.strip().split('\n'):
-                if line:
-                    feedback_data.append(json.loads(line))
+    # Check if token is available
+    if "HF_TOKEN" in st.secrets:
+        try:
+            from huggingface_hub import HfApi
+            import requests
             
-            if feedback_data:
-                # Calculate stats
-                total = len(feedback_data)
-                correct = sum(1 for f in feedback_data if f.get('correct') == 'Yes')
-                incorrect = total - correct
+            # Use Hugging Face API with token
+            api = HfApi()
+            
+            # Download the file with authentication
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                feedback_data = []
+                for line in response.text.strip().split('\n'):
+                    if line:
+                        feedback_data.append(json.loads(line))
                 
-                # Display metrics
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("📝 Total Feedback", total)
-                with col2:
-                    st.metric("✅ Correct", correct, delta=f"{correct/total*100:.0f}%")
-                with col3:
-                    st.metric("❌ Incorrect", incorrect, delta=f"{incorrect/total*100:.0f}%")
-                with col4:
-                    st.metric("🎯 Accuracy", f"{correct/total*100:.1f}%" if total > 0 else "N/A")
-                
-                # Show recent feedback
-                st.markdown("### 📋 Recent Feedback")
-                for fb in feedback_data[-5:]:  # Last 5 entries
-                    st.markdown(f"""
-                    **Image:** {fb.get('image_name', 'N/A')}  
-                    **Predicted:** {fb.get('predicted', 'N/A')} → **Actual:** {fb.get('actual', 'N/A')}  
-                    **Crop:** {fb.get('crop', 'N/A')} | **Confidence:** {fb.get('confidence', 'N/A')}  
-                    **Status:** {'✅ Correct' if fb.get('correct') == 'Yes' else '❌ Incorrect'}  
-                    ---
-                    """)
+                if feedback_data:
+                    # Calculate stats
+                    total = len(feedback_data)
+                    correct = sum(1 for f in feedback_data if f.get('correct') == 'Yes')
+                    incorrect = total - correct
+                    
+                    # Display metrics
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("📝 Total Feedback", total)
+                    with col2:
+                        st.metric("✅ Correct", correct, delta=f"{correct/total*100:.0f}%" if total > 0 else "0%")
+                    with col3:
+                        st.metric("❌ Incorrect", incorrect, delta=f"{incorrect/total*100:.0f}%" if total > 0 else "0%")
+                    with col4:
+                        st.metric("🎯 Accuracy", f"{correct/total*100:.1f}%" if total > 0 else "N/A")
+                    
+                    # Show recent feedback
+                    st.markdown("### 📋 Recent Feedback")
+                    for fb in feedback_data[-5:]:  # Last 5 entries
+                        st.markdown(f"""
+                        **Image:** {fb.get('image_name', 'N/A')}  
+                        **Predicted:** {fb.get('predicted', 'N/A')} → **Actual:** {fb.get('actual', 'N/A')}  
+                        **Crop:** {fb.get('crop', 'N/A')} | **Confidence:** {fb.get('confidence', 'N/A')}  
+                        **Status:** {'✅ Correct' if fb.get('correct') == 'Yes' else '❌ Incorrect'}  
+                        ---
+                        """)
+                else:
+                    st.info("No feedback yet. Upload images and provide feedback!")
             else:
-                st.info("No feedback yet. Upload images and provide feedback!")
-        else:
-            st.warning("Could not load feedback data")
-    except Exception as e:
-        st.warning(f"Could not load feedback: {e}")
+                st.warning(f"Could not load feedback (Status: {response.status_code})")
+        except Exception as e:
+            st.warning(f"Error loading feedback: {e}")
+    else:
+        st.warning("HF_TOKEN not found. Please add it to Secrets.")
     
     # ============================================================
     # FINAL CAPTION

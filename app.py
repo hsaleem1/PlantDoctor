@@ -690,7 +690,7 @@ if uploaded_files and len(uploaded_files) > 0:
                 st.markdown("**✏️ What was the correct diagnosis?**")
                 actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
                 
-                col_submit1, col_submit2 = st.columns([2, 3])
+                col_submit1, col_submit2 = st.columns([3, 1])
                 with col_submit1:
                     if st.button("✅ Submit Correct Diagnosis", key=f"submit_correct_diagnosis_{idx}"):
                         if actual.strip():

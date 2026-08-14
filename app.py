@@ -627,6 +627,7 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
+
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
@@ -656,7 +657,7 @@ if uploaded_files and len(uploaded_files) > 0:
                     else:
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
-                        st.session_state[f"incorrect_clicked_{idx}"] = False  # Reset incorrect state
+                        st.session_state[f"incorrect_clicked_{idx}"] = False
             
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
@@ -665,7 +666,7 @@ if uploaded_files and len(uploaded_files) > 0:
                     else:
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
-                        st.session_state[f"show_severity_{idx}"] = False  # Don't show severity yet
+                        st.session_state[f"show_severity_{idx}"] = False
             
             # ============================================================
             # 3. INCORRECT: Ask for correct diagnosis
@@ -679,18 +680,17 @@ if uploaded_files and len(uploaded_files) > 0:
                     if actual.strip():
                         st.session_state[f"actual_diagnosis_{idx}"] = actual
                         st.session_state[f"show_severity_{idx}"] = True
-                        st.session_state[f"incorrect_clicked_{idx}"] = False  # Hide this section
-                        st.rerun()  # Refresh to show severity
+                        st.session_state[f"incorrect_clicked_{idx}"] = False
+                        # No st.rerun() — severity appears below naturally
                     else:
                         st.warning("⚠️ Please enter a diagnosis before submitting.")
             
             # ============================================================
-            # 4. SEVERITY + SAVE (Shown after Correct OR Incorrect diagnosis is submitted)
+            # 4. SEVERITY + SAVE (Shown after Correct OR Incorrect diagnosis)
             # ============================================================
             if st.session_state.get(f"show_severity_{idx}", False):
                 st.markdown("---")
                 
-                # Show severity slider
                 severity = st.select_slider(
                     "⚠️ Severity of the issue:",
                     options=["Low", "Medium", "High", "Critical"],
@@ -698,12 +698,11 @@ if uploaded_files and len(uploaded_files) > 0:
                     key=f"severity_{idx}"
                 )
                 
-                # Show save button
                 if st.button("💾 Save Feedback", key=f"save_{idx}"):
                     action = st.session_state.get(f"feedback_action_{idx}")
                     
                     if action == "correct":
-                        actual_diagnosis = predicted  # Correct = same as predicted
+                        actual_diagnosis = predicted
                     else:
                         actual_diagnosis = st.session_state.get(f"actual_diagnosis_{idx}", "")
                         if not actual_diagnosis:
@@ -712,12 +711,10 @@ if uploaded_files and len(uploaded_files) > 0:
                     
                     if save_feedback_to_hf(image_name, predicted, actual_diagnosis, crop_name, confidence, location, severity):
                         st.success("✅ Feedback saved to Hugging Face!")
-                        # Reset all states for this image
                         st.session_state[f"show_severity_{idx}"] = False
                         st.session_state[f"feedback_action_{idx}"] = ""
                         st.session_state[f"incorrect_clicked_{idx}"] = False
                         st.session_state[f"actual_diagnosis_{idx}"] = ""
-                        st.rerun()
                     else:
                         st.error("Could not save feedback.")
 

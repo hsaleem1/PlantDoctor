@@ -409,79 +409,86 @@ if research_mode:
     - Model architecture details
     """)
 
+
 # ============================================================
-# QUICK REPORT (Sidebar) - Corrected
+# SIDEBAR: AI Feedback Stats
 # ============================================================
 st.sidebar.markdown("---")
-st.sidebar.subheader("📝 Quick Report")
-st.sidebar.caption("Report a disease sighting in your area")
+st.sidebar.subheader("📊 AI Feedback Stats")
+st.sidebar.caption("Model performance from user feedback")
 
-with st.sidebar.expander("📝 Report a Sighting", expanded=False):
-    with st.form("quick_report_form"):
-        st.markdown("**Report Disease/Pest Sighting**")
+try:
+    url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
+    headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        feedback_data = []
+        for line in response.text.strip().split('\n'):
+            if line:
+                feedback_data.append(json.loads(line))
         
-        report_crop = st.selectbox(
-            "Crop", 
-            ["Wheat", "Barley", "Beans", "Broccoli", "Tomato", "Potato", "Other"],
-            key="quick_crop"
-        )
-        report_disease = st.text_input("Disease/Pest Observed", key="quick_disease")
-        report_location = st.text_input("Location (e.g., Norfolk, UK)", key="quick_location")
-        report_severity = st.select_slider(
-            "Severity",
-            options=["Low", "Medium", "High", "Critical"],
-            value="Medium",
-            key="quick_severity"
-        )
-        report_notes = st.text_area("Additional Notes (optional)", key="quick_notes")
+        if feedback_data:
+            total = len(feedback_data)
+            correct = sum(1 for f in feedback_data if f.get('correct') == 'Yes')
+            incorrect = total - correct
+            accuracy = (correct / total * 100) if total > 0 else 0
+            
+            st.sidebar.metric("📝 Total Feedback", total)
+            st.sidebar.metric("✅ Accuracy", f"{accuracy:.1f}%")
+        else:
+            st.sidebar.info("No feedback yet")
+    else:
+        st.sidebar.warning("Could not load feedback")
+except:
+    st.sidebar.warning("Connect to Hugging Face")
+
+# ============================================================
+# SIDEBAR: Quick Report Stats (NEW)
+# ============================================================
+st.sidebar.markdown("---")
+st.sidebar.subheader("📊 Quick Report Stats")
+st.sidebar.caption("Community-reported disease sightings")
+
+try:
+    url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
+    headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        report_data = []
+        for line in response.text.strip().split('\n'):
+            if line:
+                report_data.append(json.loads(line))
         
-        submitted = st.form_submit_button("🚀 Submit Report")
-        
-        if submitted:
-            if report_crop and report_disease and report_location:
-                # Save to a SEPARATE file for community reports
-                report_entry = {
-                    "timestamp": str(datetime.datetime.now()),
-                    "crop": report_crop,
-                    "disease": report_disease,
-                    "location": report_location,
-                    "severity": report_severity,
-                    "notes": report_notes,
-                    "source": "quick_report"  # Distinguish from AI feedback
-                }
-                
-                try:
-                    # Load existing community reports
-                    try:
-                        url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
-                        headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
-                        response = requests.get(url, headers=headers)
-                        if response.status_code == 200:
-                            with open("community_reports.jsonl", "w") as f:
-                                f.write(response.text)
-                    except:
-                        pass
-                    
-                    # Append new report
-                    with open("community_reports.jsonl", "a") as f:
-                        f.write(json.dumps(report_entry) + "\n")
-                    
-                    # Upload to Hugging Face
-                    from huggingface_hub import HfApi
-                    api = HfApi()
-                    api.upload_file(
-                        path_or_fileobj="community_reports.jsonl",
-                        path_in_repo="community_reports.jsonl",
-                        repo_id=FEEDBACK_REPO,
-                        repo_type="dataset",
-                        token=st.secrets["HF_TOKEN"]
-                    )
-                    st.success("✅ Report submitted! Thank you for helping the community.")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Could not save report: {e}")
-            else:
-                st.warning("Please fill in all required fields (Crop, Disease, Location).")
+        if report_data:
+            total = len(report_data)
+            
+            # Top location
+            locations = [r.get('location', 'Unknown') for r in report_data]
+            top_location = max(set(locations), key=locations.count) if locations else "N/A"
+            
+            # Top disease
+            diseases = [r.get('disease', 'Unknown') for r in report_data]
+            top_disease = max(set(diseases), key=diseases.count) if diseases else "N/A"
+            
+            st.sidebar.metric("📝 Total Reports", total)
+            st.sidebar.metric("📍 Top Location", top_location)
+            st.sidebar.metric("⚠️ Most Reported", top_disease)
+            
+            # Show last 2 quick reports
+            st.sidebar.caption("**Recent Reports:**")
+            for r in report_data[-2:]:
+                crop = r.get('crop', '?')
+                disease = r.get('disease', '?')
+                severity = r.get('severity', 'N/A')
+                st.sidebar.text(f"🟢 {crop}: {disease} ({severity})")
+        else:
+            st.sidebar.info("No reports yet")
+    else:
+        st.sidebar.warning("Could not load reports")
+except:
+    st.sidebar.warning("Connect to Hugging Face")
 
 # ============================================================
 # LOAD MODEL FOR SELECTED CROP

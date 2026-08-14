@@ -560,7 +560,7 @@ if uploaded_files and len(uploaded_files) > 0:
     
     with col2:
         # Count healthy vs diseased
-        healthy_count = sum(1 for r in results if r['diagnosis'] == 'Healthy')
+        healthy_count = sum(1 for r in results if r['class'] == 'Healthy')
         disease_count = len(results) - healthy_count
         st.metric(
             label="🟢 Healthy / 🔴 Diseased",

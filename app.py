@@ -651,14 +651,15 @@ if uploaded_files and len(uploaded_files) > 0:
             
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    if location.strip():
-                        # Save with default severity "Medium" if not set yet
-                        if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location, severity="Medium"):
+                    if not location.strip():
+                        st.warning("⚠️ Please enter your location before submitting.")
+                    elif not severity:
+                        st.warning("⚠️ Please select a severity level.")
+                    else:
+                        if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location, severity):
                             st.success("✅ Feedback saved to Hugging Face!")
                         else:
                             st.error("Could not save feedback.")
-                    else:
-                        st.warning("⚠️ Please enter your location before submitting.")
             
             with col2:
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
@@ -667,27 +668,30 @@ if uploaded_files and len(uploaded_files) > 0:
                 if st.session_state.get(f"incorrect_clicked_{idx}", False):
                     with st.expander("✏️ What was the correct diagnosis?", expanded=True):
                         actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
+
                         if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
-                                if location.strip():
-                                    # Save with default severity "Medium" if not set yet
-                                    if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location, severity="Medium"):
+                                if not location.strip():
+                                    st.warning("⚠️ Please enter your location before submitting.")
+                                elif not severity:
+                                    st.warning("⚠️ Please select a severity level.")
+                                else:
+                                    if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location, severity):
                                         st.success("🙏 Feedback saved to Hugging Face!")
                                         st.session_state[f"incorrect_clicked_{idx}"] = False
                                     else:
                                         st.error("Could not save feedback.")
-                                else:
-                                    st.warning("⚠️ Please enter your location before submitting.")
                             else:
-                                st.warning("Please enter a diagnosis before submitting.")
+                                st.warning("Please enter a diagnosis before submitting.")     
             
             # ============================================================
             # 3. SEVERITY (Now at the bottom)
             # ============================================================
+	    # Severity (no default, user must pick)
             severity = st.select_slider(
                 "⚠️ Severity of the issue:",
-                options=["Low", "Medium", "High", "Critical"],
-                value="Medium",
+                options=["", "Low", "Medium", "High", "Critical"],
+                value="",
                 key=f"severity_{idx}"
             )
 

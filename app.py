@@ -627,6 +627,7 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
+
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
@@ -658,7 +659,6 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
-                        st.session_state[f"diagnosis_submitted_{idx}"] = True  # Auto-submit for correct
                         st.rerun()
             
             with col2:
@@ -670,7 +670,6 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
                         st.session_state[f"show_severity_{idx}"] = False
-                        st.session_state[f"diagnosis_submitted_{idx}"] = False  # Not submitted yet
                         st.rerun()
             
             # ============================================================
@@ -684,22 +683,28 @@ if uploaded_files and len(uploaded_files) > 0:
                     st.info("❌ You selected: **Incorrect**")
             
             # ============================================================
-            # 4. INCORRECT DIAGNOSIS (Keep visible until submitted)
+            # 4. INCORRECT DIAGNOSIS (Stays visible after submitting)
             # ============================================================
             if st.session_state.get(f"incorrect_clicked_{idx}", False):
                 st.markdown("---")
                 st.markdown("**✏️ What was the correct diagnosis?**")
                 actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
                 
-                if st.button("✅ Submit Correct Diagnosis", key=f"submit_correct_diagnosis_{idx}"):
-                    if actual.strip():
-                        st.session_state[f"actual_diagnosis_{idx}"] = actual
-                        st.session_state[f"diagnosis_submitted_{idx}"] = True  # Mark as submitted
-                        st.session_state[f"show_severity_{idx}"] = True
-                        st.session_state[f"incorrect_clicked_{idx}"] = False  # Hide the input section
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Please enter a diagnosis before submitting.")
+                col_submit1, col_submit2 = st.columns([1, 5])
+                with col_submit1:
+                    if st.button("✅ Submit Correct Diagnosis", key=f"submit_correct_diagnosis_{idx}"):
+                        if actual.strip():
+                            st.session_state[f"actual_diagnosis_{idx}"] = actual
+                            st.session_state[f"show_severity_{idx}"] = True
+                            # Keep incorrect_clicked = True so the input stays visible
+                            st.success(f"✅ Diagnosis '{actual}' submitted! Now select severity below.")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Please enter a diagnosis before submitting.")
+                
+                # Show the submitted diagnosis if it exists
+                if st.session_state.get(f"actual_diagnosis_{idx}"):
+                    st.info(f"📝 Submitted diagnosis: **{st.session_state[f'actual_diagnosis_{idx}']}**")
             
             # ============================================================
             # 5. SEVERITY + SAVE
@@ -733,12 +738,9 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"incorrect_clicked_{idx}"] = False
                         st.session_state[f"actual_diagnosis_{idx}"] = ""
                         st.session_state[f"highlight_{idx}"] = ""
-                        st.session_state[f"diagnosis_submitted_{idx}"] = False
                         st.rerun()
                     else:
                         st.error("Could not save feedback.")
-
-
 
 
     # ============================================================

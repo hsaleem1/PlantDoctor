@@ -749,14 +749,6 @@ if uploaded_files and len(uploaded_files) > 0:
             st.warning(f"Error loading feedback: {e}")
     else:
         st.warning("HF_TOKEN not found. Please add it to Secrets.")
-    
-    # ============================================================
-    # FINAL CAPTION
-    # ============================================================
-
-    st.caption("⚠️ AI-assisted diagnosis. Always confirm with field scouting.")
-else:
-    st.info("👆 Upload one or more images to begin analysis")
 
     # ============================================================
     # COMMUNITY HUB - Main Dashboard (All Three Options)
@@ -936,3 +928,13 @@ else:
                 st.info("Connect to Hugging Face to see trends")
         except Exception as e:
             st.warning(f"Could not load trends: {e}")
+
+    
+    # ============================================================
+    # FINAL CAPTION
+    # ============================================================
+
+    st.caption("⚠️ AI-assisted diagnosis. Always confirm with field scouting.")
+else:
+    st.info("👆 Upload one or more images to begin analysis")
+

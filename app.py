@@ -779,7 +779,7 @@ if uploaded_files and len(uploaded_files) > 0:
         
 
     # ============================================================
-    # TAB 1: Regional Disease Map (With Real Locations)
+    # TAB 1: Regional Disease Map (With Severity)
     # ============================================================
     with tab1:
         st.subheader("🗺️ Regional Disease Activity")
@@ -796,26 +796,43 @@ if uploaded_files and len(uploaded_files) > 0:
                     if line:
                         all_feedback.append(json.loads(line))
                 
-                # Build regional map using ACTUAL location field
+                # Build regional map with severity
                 regions = {}
                 for fb in all_feedback:
-                    # Use the real location field
                     location = fb.get('location', 'Unknown Location')
                     disease = fb.get('actual', 'Unknown')
+                    severity = fb.get('severity', 'N/A')
                     
                     if location not in regions:
                         regions[location] = {}
-                    regions[location][disease] = regions[location].get(disease, 0) + 1
+                    if disease not in regions[location]:
+                        regions[location][disease] = {'count': 0, 'severities': []}
+                    regions[location][disease]['count'] += 1
+                    if severity != 'N/A':
+                        regions[location][disease]['severities'].append(severity)
                 
                 if regions:
                     import pandas as pd
-                    df_regions = pd.DataFrame(regions).fillna(0)
-                    st.dataframe(df_regions, use_container_width=True)
-                    
-                    st.markdown("**🔴 Active Hotspots:**")
+                    # Create a severity summary
+                    severity_summary = []
                     for location, diseases in regions.items():
-                        if sum(diseases.values()) > 0:
-                            st.warning(f"⚠️ **{location}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
+                        for disease, data in diseases.items():
+                            severity_summary.append({
+                                "Location": location,
+                                "Disease": disease,
+                                "Reports": data['count'],
+                                "Severity": data['severities'][0] if data['severities'] else 'N/A'
+                            })
+                    df_severity = pd.DataFrame(severity_summary)
+                    st.dataframe(df_severity, use_container_width=True, hide_index=True)
+                    
+                    st.markdown("**🔴 Active Hotspots (with Severity):**")
+                    for location, diseases in regions.items():
+                        disease_str = []
+                        for disease, data in diseases.items():
+                            sev = data['severities'][0] if data['severities'] else 'N/A'
+                            disease_str.append(f"{disease} ({data['count']}, Severity: {sev})")
+                        st.warning(f"⚠️ **{location}**: {', '.join(disease_str)}")
                 else:
                     st.info("No location data yet. Provide feedback with locations to build the map!")
             else:
@@ -823,8 +840,9 @@ if uploaded_files and len(uploaded_files) > 0:
         except Exception as e:
             st.warning(f"Could not load data: {e}")
 
+
     # ============================================================
-    # TAB 2: Recent Community Reports (Dynamic)
+    # TAB 2: Recent Community Reports (With Severity)
     # ============================================================
     with tab2:
         st.subheader("📋 Recent Community Reports")
@@ -843,39 +861,25 @@ if uploaded_files and len(uploaded_files) > 0:
                         reports.append({
                             "Crop": data.get('crop', 'Unknown'),
                             "Disease": data.get('actual', 'Unknown'),
-                            "Predicted": data.get('predicted', 'Unknown'),
-                            "Correct": data.get('correct', 'N/A'),
+                            "Location": data.get('location', 'Unknown'),
+                            "Severity": data.get('severity', 'N/A'),  # <-- ADDED
                             "Reported": data.get('timestamp', '')[:16]
                         })
                 
                 if reports:
                     import pandas as pd
-                    df_reports = pd.DataFrame(reports[-20:])  # Show last 20
+                    df_reports = pd.DataFrame(reports[-20:])
                     st.dataframe(df_reports, use_container_width=True, hide_index=True)
-                    
-                    # Summary stats
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total Reports", len(reports))
-                    with col2:
-                        # Find most common disease
-                        diseases = pd.DataFrame(reports)['Disease']
-                        top_disease = diseases.mode()[0] if not diseases.empty else "N/A"
-                        st.metric("Top Disease", top_disease)
-                    with col3:
-                        # Find most common crop
-                        crops = pd.DataFrame(reports)['Crop']
-                        top_crop = crops.mode()[0] if not crops.empty else "N/A"
-                        st.metric("Top Crop", top_crop)
                 else:
-                    st.info("No reports yet. Upload images and provide feedback!")
+                    st.info("No reports yet. Submit a report!")
             else:
                 st.info("Connect to Hugging Face to see community reports")
         except Exception as e:
             st.warning(f"Could not load reports: {e}")
 
+
     # ============================================================
-    # TAB 3: Trends & Analytics (Dynamic)
+    # TAB 3: Trends & Analytics (With Severity)
     # ============================================================
     with tab3:
         st.subheader("📈 Disease Trends & Analytics")
@@ -893,44 +897,39 @@ if uploaded_files and len(uploaded_files) > 0:
                         feedback_data.append(json.loads(line))
                 
                 if feedback_data:
-                    # Top diseases
-                    disease_counts = {}
+                    import pandas as pd
+                    
+                    # Severity distribution
+                    severity_counts = {}
+                    for fb in feedback_data:
+                        sev = fb.get('severity', 'N/A')
+                        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+                    
+                    st.subheader("Severity Distribution")
+                    df_severity = pd.DataFrame(list(severity_counts.items()), columns=["Severity", "Reports"])
+                    st.bar_chart(df_severity.set_index("Severity"))
+                    
+                    # Top diseases with severity
+                    disease_severity = {}
                     for fb in feedback_data:
                         disease = fb.get('actual', 'Unknown')
-                        disease_counts[disease] = disease_counts.get(disease, 0) + 1
+                        sev = fb.get('severity', 'N/A')
+                        if disease not in disease_severity:
+                            disease_severity[disease] = []
+                        disease_severity[disease].append(sev)
                     
-                    import pandas as pd
-                    df_trends = pd.DataFrame(list(disease_counts.items()), columns=["Disease", "Reports"])
-                    st.bar_chart(df_trends.set_index("Disease"))
+                    st.subheader("Diseases by Severity")
+                    sev_df = pd.DataFrame([
+                        {"Disease": d, "Avg Severity": sev_list[0] if sev_list else 'N/A', "Reports": len(sev_list)}
+                        for d, sev_list in disease_severity.items()
+                    ])
+                    st.dataframe(sev_df, use_container_width=True, hide_index=True)
                     
-                    # Accuracy over time
-                    correct_count = sum(1 for fb in feedback_data if fb.get('correct') == 'Yes')
-                    total_count = len(feedback_data)
-                    accuracy = (correct_count / total_count * 100) if total_count > 0 else 0
+                    # Overall stats
+                    total = len(feedback_data)
+                    correct = sum(1 for fb in feedback_data if fb.get('correct') == 'Yes')
+                    accuracy = (correct / total * 100) if total > 0 else 0
                     st.metric("Overall Model Accuracy", f"{accuracy:.1f}%")
-                    
-                    # Per-crop breakdown
-                    crop_stats = {}
-                    for fb in feedback_data:
-                        crop = fb.get('crop', 'Unknown')
-                        if crop not in crop_stats:
-                            crop_stats[crop] = {'correct': 0, 'total': 0}
-                        crop_stats[crop]['total'] += 1
-                        if fb.get('correct') == 'Yes':
-                            crop_stats[crop]['correct'] += 1
-                    
-                    if crop_stats:
-                        st.subheader("Per-Crop Accuracy")
-                        crop_df = pd.DataFrame([
-                            {
-                                "Crop": crop,
-                                "Accuracy": f"{stats['correct']/stats['total']*100:.1f}%",
-                                "Correct": stats['correct'],
-                                "Total": stats['total']
-                            }
-                            for crop, stats in crop_stats.items()
-                        ])
-                        st.dataframe(crop_df, use_container_width=True, hide_index=True)
                 else:
                     st.info("No data yet. Upload images and provide feedback!")
             else:

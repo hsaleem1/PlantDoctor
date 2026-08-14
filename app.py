@@ -760,13 +760,13 @@ if uploaded_files and len(uploaded_files) > 0:
     # Create tabs for organization
     tab1, tab2, tab3 = st.tabs(["📊 Regional Map", "📋 Recent Reports", "📈 Trends"])
     
-
+    
     # ============================================================
-    # TAB 1: Regional Disease Map (Dynamic)
+    # TAB 1: Regional Disease Map (Uses Crop Names)
     # ============================================================
     with tab1:
-        st.subheader("🗺️ Regional Disease Activity")
-        st.caption("Disease hotspots from community reports")
+        st.subheader("🗺️ Disease Activity by Crop")
+        st.caption("Disease distribution across different crops")
         
         # Load real data from feedback
         try:
@@ -782,37 +782,32 @@ if uploaded_files and len(uploaded_files) > 0:
                         data = json.loads(line)
                         all_feedback.append(data)
                 
-                # Build regional disease map from actual feedback
-                regions = {}
+                # Build disease map using CROP as "region"
+                crop_diseases = {}
                 for fb in all_feedback:
-                    # Use actual crop from feedback
                     crop = fb.get('crop', 'Unknown')
-                    # Use actual diagnosis from feedback
                     disease = fb.get('actual', 'Unknown')
-                    # Use image_name as location placeholder (or add location field)
-                    location = fb.get('image_name', 'Unknown').split('_')[0] if '_' in fb.get('image_name', '') else 'Unknown'
                     
-                    if location not in regions:
-                        regions[location] = {}
-                    regions[location][disease] = regions[location].get(disease, 0) + 1
+                    if crop not in crop_diseases:
+                        crop_diseases[crop] = {}
+                    crop_diseases[crop][disease] = crop_diseases[crop].get(disease, 0) + 1
                 
-                if regions:
+                if crop_diseases:
                     import pandas as pd
-                    df_regions = pd.DataFrame(regions).fillna(0)
-                    st.dataframe(df_regions, use_container_width=True)
+                    df_crops = pd.DataFrame(crop_diseases).fillna(0)
+                    st.dataframe(df_crops, use_container_width=True)
                     
                     # Show hotspot summary
-                    st.markdown("**🔴 Active Hotspots:**")
-                    for region, diseases in regions.items():
+                    st.markdown("**🔴 Active Hotspots by Crop:**")
+                    for crop, diseases in crop_diseases.items():
                         if sum(diseases.values()) > 0:
-                            st.warning(f"⚠️ **{region}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
+                            st.warning(f"⚠️ **{crop}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
                 else:
                     st.info("No feedback data yet. Upload images and provide feedback to build the map!")
             else:
                 st.info("Connect to Hugging Face to see community map")
         except Exception as e:
             st.warning(f"Could not load data: {e}")
-    
 
     # ============================================================
     # TAB 2: Recent Community Reports (Dynamic)

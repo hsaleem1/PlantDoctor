@@ -649,12 +649,16 @@ if uploaded_files and len(uploaded_files) > 0:
             # 2. CORRECT / INCORRECT BUTTONS
             # ============================================================
             col1, col2 = st.columns(2)
+
+	    # At the top of the expander
+	    selection_status = st.empty()
             
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
+			selection_status.success("✅ You selected: **Correct**")
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
@@ -664,6 +668,7 @@ if uploaded_files and len(uploaded_files) > 0:
                     if not location.strip():
                         st.warning("⚠️ Please enter your location.")
                     else:
+			selection_status.info("❌ You selected: **Incorrect**")
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
                         st.session_state[f"show_severity_{idx}"] = False

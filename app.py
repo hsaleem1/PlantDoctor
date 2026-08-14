@@ -627,7 +627,6 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
-
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
@@ -659,6 +658,7 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"feedback_action_{idx}"] = "correct"
                         st.session_state[f"show_severity_{idx}"] = True
                         st.session_state[f"incorrect_clicked_{idx}"] = False
+                        st.session_state[f"diagnosis_submitted_{idx}"] = True  # Auto-submit for correct
                         st.rerun()
             
             with col2:
@@ -670,10 +670,11 @@ if uploaded_files and len(uploaded_files) > 0:
                         st.session_state[f"incorrect_clicked_{idx}"] = True
                         st.session_state[f"feedback_action_{idx}"] = "incorrect"
                         st.session_state[f"show_severity_{idx}"] = False
+                        st.session_state[f"diagnosis_submitted_{idx}"] = False  # Not submitted yet
                         st.rerun()
             
             # ============================================================
-            # 3. HIGHLIGHT MESSAGE (Appears AFTER buttons)
+            # 3. HIGHLIGHT MESSAGE
             # ============================================================
             highlight_key = f"highlight_{idx}"
             if st.session_state.get(highlight_key):
@@ -683,7 +684,7 @@ if uploaded_files and len(uploaded_files) > 0:
                     st.info("❌ You selected: **Incorrect**")
             
             # ============================================================
-            # 4. INCORRECT DIAGNOSIS (if applicable)
+            # 4. INCORRECT DIAGNOSIS (Keep visible until submitted)
             # ============================================================
             if st.session_state.get(f"incorrect_clicked_{idx}", False):
                 st.markdown("---")
@@ -693,8 +694,9 @@ if uploaded_files and len(uploaded_files) > 0:
                 if st.button("✅ Submit Correct Diagnosis", key=f"submit_correct_diagnosis_{idx}"):
                     if actual.strip():
                         st.session_state[f"actual_diagnosis_{idx}"] = actual
+                        st.session_state[f"diagnosis_submitted_{idx}"] = True  # Mark as submitted
                         st.session_state[f"show_severity_{idx}"] = True
-                        st.session_state[f"incorrect_clicked_{idx}"] = False
+                        st.session_state[f"incorrect_clicked_{idx}"] = False  # Hide the input section
                         st.rerun()
                     else:
                         st.warning("⚠️ Please enter a diagnosis before submitting.")
@@ -725,17 +727,16 @@ if uploaded_files and len(uploaded_files) > 0:
                     
                     if save_feedback_to_hf(image_name, predicted, actual_diagnosis, crop_name, confidence, location, severity):
                         st.success("✅ Feedback saved to Hugging Face!")
+                        # Reset all states
                         st.session_state[f"show_severity_{idx}"] = False
                         st.session_state[f"feedback_action_{idx}"] = ""
                         st.session_state[f"incorrect_clicked_{idx}"] = False
                         st.session_state[f"actual_diagnosis_{idx}"] = ""
-                        st.session_state[f"highlight_{idx}"] = ""  # Clear highlight
+                        st.session_state[f"highlight_{idx}"] = ""
+                        st.session_state[f"diagnosis_submitted_{idx}"] = False
                         st.rerun()
                     else:
                         st.error("Could not save feedback.")
-
-
-
 
 
 

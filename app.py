@@ -273,7 +273,7 @@ hf_api = HfApi()
 # Your feedback dataset repository
 FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
 
-def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
+def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, location=""):
     """Save feedback to Hugging Face dataset"""
     try:
         # Check if token is available
@@ -281,7 +281,7 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
             st.warning("Feedback not saved (no token)")
             return False
         
-        # Create feedback entry
+        # Create feedback entry with location
         feedback_entry = {
             "timestamp": str(datetime.datetime.now()),
             "image_name": image_name,
@@ -289,7 +289,8 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
             "actual": actual,
             "crop": crop,
             "confidence": f"{confidence:.1f}%",
-            "correct": "Yes" if predicted == actual else "No"
+            "correct": "Yes" if predicted == actual else "No",
+            "location": location  # <-- ADDED
         }
         
         # Load existing feedback
@@ -570,6 +571,36 @@ if uploaded_files and len(uploaded_files) > 0:
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
+
+            # ============================================================
+            # ADD LOCATION INPUT (ALWAYS VISIBLE)
+            # ============================================================
+            location = st.text_input(
+                "📍 Your location (e.g., Norfolk, UK):", 
+                key=f"location_{idx}",
+                placeholder="e.g., Norfolk, UK"
+            )
+            
+            with col1:
+                if st.button(f"✅ Correct", key=f"correct_{idx}"):
+                    if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location):
+                        st.success("✅ Feedback saved to Hugging Face!")
+                    else:
+                        st.error("Could not save feedback.")
+            
+            with col2:
+                if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
+                    with st.expander("✏️ What was the correct diagnosis?"):
+                        actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
+                        if st.button("Submit", key=f"submit_{idx}"):
+                            if actual:
+                                if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location):
+                                    st.success("🙏 Feedback saved to Hugging Face!")
+                                else:
+                                    st.error("Could not save feedback.")
+                            else:
+                                st.warning("Please enter a diagnosis.")
+
             
             # ============================================================
             # CORRECT BUTTON (Works)
@@ -759,51 +790,48 @@ if uploaded_files and len(uploaded_files) > 0:
     
     # Create tabs for organization
     tab1, tab2, tab3 = st.tabs(["📊 Regional Map", "📋 Recent Reports", "📈 Trends"])
-    
-    
+        
+
     # ============================================================
-    # TAB 1: Regional Disease Map (Uses Crop Names)
+    # TAB 1: Regional Disease Map (With Real Locations)
     # ============================================================
     with tab1:
-        st.subheader("🗺️ Disease Activity by Crop")
-        st.caption("Disease distribution across different crops")
+        st.subheader("🗺️ Regional Disease Activity")
+        st.caption("Disease hotspots from community reports")
         
-        # Load real data from feedback
         try:
             url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
             headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
             response = requests.get(url, headers=headers)
             
             if response.status_code == 200:
-                # Parse feedback data
                 all_feedback = []
                 for line in response.text.strip().split('\n'):
                     if line:
-                        data = json.loads(line)
-                        all_feedback.append(data)
+                        all_feedback.append(json.loads(line))
                 
-                # Build disease map using CROP as "region"
-                crop_diseases = {}
+                # Build regional map using ACTUAL location field
+                regions = {}
                 for fb in all_feedback:
-                    crop = fb.get('crop', 'Unknown')
+                    # Use the real location field
+                    location = fb.get('location', 'Unknown Location')
                     disease = fb.get('actual', 'Unknown')
                     
-                    if crop not in crop_diseases:
-                        crop_diseases[crop] = {}
-                    crop_diseases[crop][disease] = crop_diseases[crop].get(disease, 0) + 1
+                    if location not in regions:
+                        regions[location] = {}
+                    regions[location][disease] = regions[location].get(disease, 0) + 1
                 
-                if crop_diseases:
+                if regions:
                     import pandas as pd
-                    df_crops = pd.DataFrame(crop_diseases).fillna(0)
-                    st.dataframe(df_crops, use_container_width=True)
+                    df_regions = pd.DataFrame(regions).fillna(0)
+                    st.dataframe(df_regions, use_container_width=True)
                     
-                    # Show hotspot summary
-                    st.markdown("**🔴 Active Hotspots by Crop:**")
-                    for crop, diseases in crop_diseases.items():
+                    st.markdown("**🔴 Active Hotspots:**")
+                    for location, diseases in regions.items():
                         if sum(diseases.values()) > 0:
-                            st.warning(f"⚠️ **{crop}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
+                            st.warning(f"⚠️ **{location}**: {', '.join([f'{k} ({v})' for k, v in diseases.items()])}")
                 else:
-                    st.info("No feedback data yet. Upload images and provide feedback to build the map!")
+                    st.info("No location data yet. Provide feedback with locations to build the map!")
             else:
                 st.info("Connect to Hugging Face to see community map")
         except Exception as e:

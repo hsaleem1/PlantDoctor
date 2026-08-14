@@ -14,6 +14,14 @@ import numpy as np
 import os
 from huggingface_hub import hf_hub_download
 
+from huggingface_hub import HfApi, login
+
+# Login using token from secrets
+if "HF_TOKEN" in st.secrets:
+    login(token=st.secrets["HF_TOKEN"])
+else:
+    st.warning("HF_TOKEN not found in secrets. Feedback will not be saved.")
+
 # ============================================================
 # CONFIGURATION
 # ============================================================

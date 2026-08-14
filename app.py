@@ -273,13 +273,20 @@ hf_api = HfApi()
 # Your feedback dataset repository
 FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
 
+# ============================================================
+# SAVE FEEDBACK TO HUGGING FACE (Full Code)
+# ============================================================
 def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, location="", severity=""):
-    """Save feedback to Hugging Face dataset"""
+    """Save feedback to Hugging Face dataset (both feedback.jsonl and community_reports.jsonl)"""
     try:
+        # Check if token is available
         if "HF_TOKEN" not in st.secrets:
             st.warning("Feedback not saved (no token)")
             return False
         
+        # ============================================================
+        # PART 1: SAVE TO feedback.jsonl (AI Feedback)
+        # ============================================================
         feedback_entry = {
             "timestamp": str(datetime.datetime.now()),
             "image_name": image_name,
@@ -288,15 +295,15 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, locatio
             "crop": crop,
             "confidence": f"{confidence:.1f}%",
             "correct": "Yes" if predicted == actual else "No",
-            "location": location,
-            "severity": severity  # <-- SAVED HERE
+            "location": location if location and location.strip() else "",
+            "severity": severity if severity else "N/A"
         }
         
-        # Load existing feedback
-        import requests
+        # Load existing feedback.jsonl
         try:
-            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/raw/main/feedback.jsonl"
-            response = requests.get(url)
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 with open("feedback.jsonl", "w") as f:
                     f.write(response.text)
@@ -309,18 +316,59 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, locatio
         with open("feedback.jsonl", "a") as f:
             f.write(json.dumps(feedback_entry) + "\n")
         
-        # Upload to Hugging Face
-        hf_api = HfApi()
-        hf_api.upload_file(
+        # Upload feedback.jsonl to Hugging Face
+        from huggingface_hub import HfApi
+        api = HfApi()
+        api.upload_file(
             path_or_fileobj="feedback.jsonl",
             path_in_repo="feedback.jsonl",
             repo_id=FEEDBACK_REPO,
             repo_type="dataset",
             token=st.secrets["HF_TOKEN"]
         )
+        
+        # ============================================================
+        # PART 2: ALSO SAVE TO community_reports.jsonl (Quick Report Stats)
+        # ============================================================
+        report_entry = {
+            "timestamp": str(datetime.datetime.now()),
+            "crop": crop,
+            "disease": actual,  # Use actual diagnosis as the disease
+            "location": location if location and location.strip() else "",
+            "severity": severity if severity else "N/A",
+            "source": "ai_feedback"
+        }
+        
+        # Load existing community_reports.jsonl
+        try:
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                with open("community_reports.jsonl", "w") as f:
+                    f.write(response.text)
+        except:
+            # Create new file if it doesn't exist
+            with open("community_reports.jsonl", "w") as f:
+                pass
+        
+        # Append new report
+        with open("community_reports.jsonl", "a") as f:
+            f.write(json.dumps(report_entry) + "\n")
+        
+        # Upload community_reports.jsonl to Hugging Face
+        api.upload_file(
+            path_or_fileobj="community_reports.jsonl",
+            path_in_repo="community_reports.jsonl",
+            repo_id=FEEDBACK_REPO,
+            repo_type="dataset",
+            token=st.secrets["HF_TOKEN"]
+        )
+        
         return True
+        
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error saving feedback: {e}")
         return False
 
 # ============================================================

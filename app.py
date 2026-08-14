@@ -1,4 +1,5 @@
 # Add these to your existing imports
+import requests
 import matplotlib.pyplot as plt
 import io
 import cv2

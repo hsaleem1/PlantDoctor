@@ -273,15 +273,13 @@ hf_api = HfApi()
 # Your feedback dataset repository
 FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
 
-def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, location=""):
+def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, location="", severity=""):
     """Save feedback to Hugging Face dataset"""
     try:
-        # Check if token is available
         if "HF_TOKEN" not in st.secrets:
             st.warning("Feedback not saved (no token)")
             return False
         
-        # Create feedback entry with location
         feedback_entry = {
             "timestamp": str(datetime.datetime.now()),
             "image_name": image_name,
@@ -290,7 +288,8 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence, locatio
             "crop": crop,
             "confidence": f"{confidence:.1f}%",
             "correct": "Yes" if predicted == actual else "No",
-            "location": location  # <-- ADDED
+            "location": location,
+            "severity": severity  # <-- SAVED HERE
         }
         
         # Load existing feedback
@@ -558,7 +557,7 @@ if uploaded_files and len(uploaded_files) > 0:
                   
 
     # ============================================================
-    # FEEDBACK UI (With Unique Keys)
+    # FEEDBACK UI (With Severity)
     # ============================================================
     st.markdown("---")
     st.subheader("📝 Help Improve the Model")
@@ -572,38 +571,49 @@ if uploaded_files and len(uploaded_files) > 0:
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
-            
-            # Location input with unique key
+    
+            # ============================================================
+            # LOCATION INPUT
+            # ============================================================
             location = st.text_input(
                 "📍 Your location (e.g., Norfolk, UK):", 
-                key=f"location_{idx}",  # Unique key
+                key=f"location_{idx}",
                 placeholder="e.g., Norfolk, UK"
             )
             
+            # ============================================================
+            # SEVERITY SELECTION (ADD THIS)
+            # ============================================================
+            severity = st.select_slider(
+                "⚠️ Severity of the issue:",
+                options=["Low", "Medium", "High", "Critical"],
+                value="Medium",
+                key=f"severity_{idx}"
+            )
+            
+            # ============================================================
+            # CORRECT BUTTON
+            # ============================================================
             with col1:
-                # Unique key for correct button
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
-                    if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location):
+                    if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location, severity):
                         st.success("✅ Feedback saved to Hugging Face!")
                     else:
                         st.error("Could not save feedback.")
             
+            # ============================================================
+            # INCORRECT BUTTON
+            # ============================================================
             with col2:
-                # Unique key for incorrect button
                 if st.button(f"❌ Incorrect", key=f"incorrect_{idx}"):
-                    # Store state for this image
                     st.session_state[f"incorrect_clicked_{idx}"] = True
                 
-                # Show input if incorrect was clicked
                 if st.session_state.get(f"incorrect_clicked_{idx}", False):
                     with st.expander("✏️ What was the correct diagnosis?", expanded=True):
-                        actual = st.text_input(
-                            "Enter the correct diagnosis:", 
-                            key=f"actual_{idx}"  # Unique key
-                        )
-                        if st.button("Submit", key=f"submit_{idx}"):  # Unique key
+                        actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
+                        if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
-                                if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location):
+                                if save_feedback_to_hf(image_name, predicted, actual, crop_name, confidence, location, severity):
                                     st.success("🙏 Feedback saved to Hugging Face!")
                                     st.session_state[f"incorrect_clicked_{idx}"] = False
                                 else:

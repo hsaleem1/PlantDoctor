@@ -247,8 +247,13 @@ hf_api = HfApi()
 FEEDBACK_REPO = "Muhammad-Hammad-Saleem/PlantDoctor-Feedback"
 
 def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
-    """Save feedback to Hugging Face dataset in real-time"""
+    """Save feedback to Hugging Face dataset"""
     try:
+        # Check if token is available
+        if "HF_TOKEN" not in st.secrets:
+            st.warning("Feedback not saved (no token)")
+            return False
+        
         # Create feedback entry
         feedback_entry = {
             "timestamp": str(datetime.datetime.now()),
@@ -260,20 +265,35 @@ def save_feedback_to_hf(image_name, predicted, actual, crop, confidence):
             "correct": "Yes" if predicted == actual else "No"
         }
         
-        # Append to local JSONL file
+        # Load existing feedback
+        import requests
+        try:
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/raw/main/feedback.jsonl"
+            response = requests.get(url)
+            if response.status_code == 200:
+                with open("feedback.jsonl", "w") as f:
+                    f.write(response.text)
+        except:
+            # Create new file if it doesn't exist
+            with open("feedback.jsonl", "w") as f:
+                pass
+        
+        # Append new feedback
         with open("feedback.jsonl", "a") as f:
             f.write(json.dumps(feedback_entry) + "\n")
         
-        # Upload to Hugging Face (overwrites with new data)
+        # Upload to Hugging Face
+        hf_api = HfApi()
         hf_api.upload_file(
             path_or_fileobj="feedback.jsonl",
             path_in_repo="feedback.jsonl",
             repo_id=FEEDBACK_REPO,
-            repo_type="dataset"
+            repo_type="dataset",
+            token=st.secrets["HF_TOKEN"]
         )
         return True
     except Exception as e:
-        print(f"Error saving feedback: {e}")
+        print(f"Error: {e}")
         return False
 
 # ============================================================

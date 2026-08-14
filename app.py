@@ -584,11 +584,15 @@ if uploaded_files and len(uploaded_files) > 0:
             # ============================================================
             # LOCATION INPUT
             # ============================================================
+            # Location input with proper handling
             location = st.text_input(
-                "📍 Your location (e.g., Norfolk, UK):", 
-                key=f"location_{idx}",
-                placeholder="e.g., Norfolk, UK"
+            	"📍 Your location (e.g., Norfolk, UK):", 
+            	key=f"location_{idx}",
+            	placeholder="e.g., Norfolk, UK"
             )
+        
+            # When saving
+            actual_location = location.strip() if location and location.strip() else "Unknown Location"
             
             # ============================================================
             # SEVERITY SELECTION (ADD THIS)
@@ -786,9 +790,9 @@ if uploaded_files and len(uploaded_files) > 0:
     # Create tabs for organization
     tab1, tab2, tab3 = st.tabs(["📊 Regional Map", "📋 Recent Reports", "📈 Trends"])
         
-
+    
     # ============================================================
-    # TAB 1: Regional Disease Map (With Severity)
+    # TAB 1: Regional Disease Map
     # ============================================================
     with tab1:
         st.subheader("🗺️ Regional Disease Activity")
@@ -805,10 +809,12 @@ if uploaded_files and len(uploaded_files) > 0:
                     if line:
                         all_feedback.append(json.loads(line))
                 
-                # Build regional map with severity
+                # Build regional map
                 regions = {}
                 for fb in all_feedback:
-                    location = fb.get('location', 'Unknown Location')
+                    location = fb.get('location', '').strip()
+                    if not location:
+                        location = "Unknown Location"
                     disease = fb.get('actual', 'Unknown')
                     severity = fb.get('severity', 'N/A')
                     
@@ -822,7 +828,6 @@ if uploaded_files and len(uploaded_files) > 0:
                 
                 if regions:
                     import pandas as pd
-                    # Create a severity summary
                     severity_summary = []
                     for location, diseases in regions.items():
                         for disease, data in diseases.items():
@@ -851,44 +856,70 @@ if uploaded_files and len(uploaded_files) > 0:
 
 
     # ============================================================
-    # TAB 2: Recent Community Reports (With Severity)
+    # TAB 2: Recent Community Reports
     # ============================================================
     with tab2:
         st.subheader("📋 Recent Community Reports")
         st.caption("Real reports from farmers using PlantDoctor")
         
+        all_reports = []
+        
+        # 1. Load AI feedback from feedback.jsonl
         try:
             url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/feedback.jsonl"
             headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
             response = requests.get(url, headers=headers)
-            
             if response.status_code == 200:
-                reports = []
                 for line in response.text.strip().split('\n'):
                     if line:
                         data = json.loads(line)
-                        reports.append({
+                        location = data.get('location', '').strip()
+                        if not location:
+                            location = "Unknown Location"
+                        all_reports.append({
                             "Crop": data.get('crop', 'Unknown'),
                             "Disease": data.get('actual', 'Unknown'),
-                            "Location": data.get('location', 'Unknown'),
-                            "Severity": data.get('severity', 'N/A'),  # <-- ADDED
+                            "Location": location,
+                            "Severity": data.get('severity', 'N/A'),
+                            "Source": "AI Feedback",
                             "Reported": data.get('timestamp', '')[:16]
                         })
-                
-                if reports:
-                    import pandas as pd
-                    df_reports = pd.DataFrame(reports[-20:])
-                    st.dataframe(df_reports, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No reports yet. Submit a report!")
-            else:
-                st.info("Connect to Hugging Face to see community reports")
-        except Exception as e:
-            st.warning(f"Could not load reports: {e}")
+        except:
+            pass
+        
+        # 2. Load Quick Reports from community_reports.jsonl
+        try:
+            url = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
+            headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                for line in response.text.strip().split('\n'):
+                    if line:
+                        data = json.loads(line)
+                        location = data.get('location', '').strip()
+                        if not location:
+                            location = "Unknown Location"
+                        all_reports.append({
+                            "Crop": data.get('crop', 'Unknown'),
+                            "Disease": data.get('disease', 'Unknown'),
+                            "Location": location,
+                            "Severity": data.get('severity', 'N/A'),
+                            "Source": "Quick Report",
+                            "Reported": data.get('timestamp', '')[:16]
+                        })
+        except:
+            pass
+        
+        # 3. Display combined reports
+        if all_reports:
+            import pandas as pd
+            df_reports = pd.DataFrame(all_reports[-20:])  # Show last 20
+            st.dataframe(df_reports, use_container_width=True, hide_index=True)
+        else:
+            st.info("No reports yet. Submit a report!")
 
-
-    # ============================================================
-    # TAB 3: Trends & Analytics (With Severity)
+        # ============================================================
+    # TAB 3: Trends & Analytics
     # ============================================================
     with tab3:
         st.subheader("📈 Disease Trends & Analytics")
@@ -905,6 +936,24 @@ if uploaded_files and len(uploaded_files) > 0:
                     if line:
                         feedback_data.append(json.loads(line))
                 
+                # Also load community reports
+                try:
+                    url2 = f"https://huggingface.co/datasets/{FEEDBACK_REPO}/resolve/main/community_reports.jsonl"
+                    response2 = requests.get(url2, headers=headers)
+                    if response2.status_code == 200:
+                        for line in response2.text.strip().split('\n'):
+                            if line:
+                                data = json.loads(line)
+                                feedback_data.append({
+                                    "actual": data.get('disease', 'Unknown'),
+                                    "severity": data.get('severity', 'N/A'),
+                                    "crop": data.get('crop', 'Unknown'),
+                                    "location": data.get('location', 'Unknown'),
+                                    "source": "quick_report"
+                                })
+                except:
+                    pass
+                
                 if feedback_data:
                     import pandas as pd
                     
@@ -916,35 +965,54 @@ if uploaded_files and len(uploaded_files) > 0:
                     
                     st.subheader("Severity Distribution")
                     df_severity = pd.DataFrame(list(severity_counts.items()), columns=["Severity", "Reports"])
-                    st.bar_chart(df_severity.set_index("Severity"))
+                    if not df_severity.empty:
+                        st.bar_chart(df_severity.set_index("Severity"))
+                    else:
+                        st.info("No severity data yet")
                     
-                    # Top diseases with severity
-                    disease_severity = {}
+                    # Top diseases
+                    disease_counts = {}
                     for fb in feedback_data:
                         disease = fb.get('actual', 'Unknown')
-                        sev = fb.get('severity', 'N/A')
-                        if disease not in disease_severity:
-                            disease_severity[disease] = []
-                        disease_severity[disease].append(sev)
+                        disease_counts[disease] = disease_counts.get(disease, 0) + 1
                     
-                    st.subheader("Diseases by Severity")
-                    sev_df = pd.DataFrame([
-                        {"Disease": d, "Avg Severity": sev_list[0] if sev_list else 'N/A', "Reports": len(sev_list)}
-                        for d, sev_list in disease_severity.items()
-                    ])
-                    st.dataframe(sev_df, use_container_width=True, hide_index=True)
+                    st.subheader("Top Diseases")
+                    df_diseases = pd.DataFrame(list(disease_counts.items()), columns=["Disease", "Reports"])
+                    if not df_diseases.empty:
+                        st.bar_chart(df_diseases.set_index("Disease"))
+                    else:
+                        st.info("No disease data yet")
+                    
+                    # Per-crop breakdown
+                    crop_stats = {}
+                    for fb in feedback_data:
+                        crop = fb.get('crop', 'Unknown')
+                        if crop not in crop_stats:
+                            crop_stats[crop] = {}
+                        disease = fb.get('actual', 'Unknown')
+                        crop_stats[crop][disease] = crop_stats[crop].get(disease, 0) + 1
+                    
+                    if crop_stats:
+                        st.subheader("Diseases by Crop")
+                        crop_summary = []
+                        for crop, diseases in crop_stats.items():
+                            for disease, count in diseases.items():
+                                crop_summary.append({"Crop": crop, "Disease": disease, "Reports": count})
+                        df_crops = pd.DataFrame(crop_summary)
+                        st.dataframe(df_crops, use_container_width=True, hide_index=True)
                     
                     # Overall stats
                     total = len(feedback_data)
                     correct = sum(1 for fb in feedback_data if fb.get('correct') == 'Yes')
                     accuracy = (correct / total * 100) if total > 0 else 0
-                    st.metric("Overall Model Accuracy", f"{accuracy:.1f}%")
+                    st.metric("Overall Model Accuracy", f"{accuracy:.1f}%" if total > 0 else "N/A")
                 else:
                     st.info("No data yet. Upload images and provide feedback!")
             else:
                 st.info("Connect to Hugging Face to see trends")
         except Exception as e:
             st.warning(f"Could not load trends: {e}")
+
 
     
     # ============================================================

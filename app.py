@@ -627,6 +627,7 @@ if uploaded_files and len(uploaded_files) > 0:
     st.subheader("📝 Help Improve the Model")
     st.caption("Your feedback helps us train better models for farmers")
     
+    
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
@@ -636,7 +637,7 @@ if uploaded_files and len(uploaded_files) > 0:
             confidence = result['confidence']
     
             # ============================================================
-            # 1. LOCATION (Required - Ask First)
+            # 1. LOCATION
             # ============================================================
             location = st.text_input(
                 "📍 Your location (e.g., Norfolk, UK):", 
@@ -645,7 +646,7 @@ if uploaded_files and len(uploaded_files) > 0:
             )
             
             # ============================================================
-            # 2. CORRECT / INCORRECT (Now in the middle)
+            # 2. CORRECT / INCORRECT BUTTONS
             # ============================================================
             col1, col2 = st.columns(2)
             
@@ -653,7 +654,7 @@ if uploaded_files and len(uploaded_files) > 0:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
                     if not location.strip():
                         st.warning("⚠️ Please enter your location before submitting.")
-                    elif not severity:
+                    elif not severity:  # severity exists because we defined it earlier
                         st.warning("⚠️ Please select a severity level.")
                     else:
                         if save_feedback_to_hf(image_name, predicted, predicted, crop_name, confidence, location, severity):
@@ -668,7 +669,6 @@ if uploaded_files and len(uploaded_files) > 0:
                 if st.session_state.get(f"incorrect_clicked_{idx}", False):
                     with st.expander("✏️ What was the correct diagnosis?", expanded=True):
                         actual = st.text_input("Enter the correct diagnosis:", key=f"actual_{idx}")
-
                         if st.button("Submit", key=f"submit_{idx}"):
                             if actual:
                                 if not location.strip():
@@ -682,12 +682,11 @@ if uploaded_files and len(uploaded_files) > 0:
                                     else:
                                         st.error("Could not save feedback.")
                             else:
-                                st.warning("Please enter a diagnosis before submitting.")     
+                                st.warning("Please enter a diagnosis before submitting.")
             
             # ============================================================
-            # 3. SEVERITY (Now at the bottom)
+            # 3. SEVERITY (Displayed at the End, but defined above)
             # ============================================================
-	    # Severity (no default, user must pick)
             severity = st.select_slider(
                 "⚠️ Severity of the issue:",
                 options=["", "Low", "Medium", "High", "Critical"],

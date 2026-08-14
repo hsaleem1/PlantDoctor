@@ -631,11 +631,16 @@ if uploaded_files and len(uploaded_files) > 0:
     for idx, result in enumerate(results):
         with st.expander(f"📸 Provide feedback for Image {idx + 1} ({result['class']})"):
             
-            image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
+            
+	    # At the top of the expander
+	    selection_status = st.empty()
+    
+
+	    image_name = uploaded_files[idx].name if idx < len(uploaded_files) else "unknown"
             crop_name = selected_crop
             predicted = result['class']
             confidence = result['confidence']
-    
+
             # ============================================================
             # 1. LOCATION
             # ============================================================
@@ -650,8 +655,6 @@ if uploaded_files and len(uploaded_files) > 0:
             # ============================================================
             col1, col2 = st.columns(2)
 
-	    # At the top of the expander
-	    selection_status = st.empty()
             
             with col1:
                 if st.button(f"✅ Correct", key=f"correct_{idx}"):
